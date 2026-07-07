@@ -4,6 +4,7 @@ import {
   MessageSquare, Wrench, DollarSign, Search, Clock, Check, X, Send, 
   User, Mail, Phone, Calendar, AlertCircle, RefreshCw, MessageCircle
 } from 'lucide-react';
+import ModalOverlay from '../ui/ModalOverlay';
 
 function ServiceTickets() {
   const [repairs, setRepairs] = useState([]);
@@ -24,16 +25,17 @@ function ServiceTickets() {
   const [chatReplyText, setChatReplyText] = useState('');
   const chatMessagesEndRef = useRef(null);
 
-  const fetchData = async () => {
+  const fetchData = async (tab = activeTab) => {
     setLoading(true);
+    setError('');
     try {
-      if (activeTab === 'repairs') {
+      if (tab === 'repairs') {
         const res = await api.services.getRepairs();
         if (res.success) setRepairs(res.data);
-      } else if (activeTab === 'sells') {
+      } else if (tab === 'sells') {
         const res = await api.services.getSells();
         if (res.success) setSells(res.data);
-      } else if (activeTab === 'chats') {
+      } else if (tab === 'chats') {
         const res = await api.services.getChats();
         if (res.success) setChats(res.data);
       }
@@ -44,8 +46,23 @@ function ServiceTickets() {
     }
   };
 
+  const fetchTabCounts = async () => {
+    try {
+      const [repairsRes, sellsRes, chatsRes] = await Promise.all([
+        api.services.getRepairs(),
+        api.services.getSells(),
+        api.services.getChats(),
+      ]);
+      if (repairsRes.success) setRepairs(repairsRes.data);
+      if (sellsRes.success) setSells(sellsRes.data);
+      if (chatsRes.success) setChats(chatsRes.data);
+    } catch {
+      // Counts refresh silently; active tab fetch shows errors
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchData(activeTab);
   }, [activeTab]);
 
   // Scroll active chat to bottom
@@ -81,7 +98,8 @@ function ServiceTickets() {
       if (res.success) {
         alert('Ticket updated successfully!');
         setSelectedTicket(null);
-        fetchData();
+        fetchData(activeTab);
+        fetchTabCounts();
       }
     } catch (err) {
       alert(err.message || 'Failed to update ticket');
@@ -113,7 +131,7 @@ function ServiceTickets() {
           ...prev,
           messages: [
             ...prev.messages,
-            { sender: 'bot', text: chatReplyText, timestamp: new Date() }
+            { sender: 'agent', text: chatReplyText, timestamp: new Date() }
           ]
         }));
         setChatReplyText('');
@@ -137,10 +155,25 @@ function ServiceTickets() {
             Support tickets & service requests
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Address diagnostic repairs intake, evaluate trade-in valuations, and talk directly via the customer chat.
+            Repair and sell/trade-in requests from the store appear here automatically.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => fetchData(activeTab)}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </button>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 dark:border-slate-850 gap-1 overflow-x-auto">
@@ -216,6 +249,13 @@ function ServiceTickets() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                  {repairs.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-10 text-center text-sm text-slate-400">
+                        No repair requests yet. Submissions from <span className="font-semibold">/repair</span> will appear here.
+                      </td>
+                    </tr>
+                  )}
                   {repairs.map(rep => (
                     <tr key={rep.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                       <td className="p-4">
@@ -266,6 +306,13 @@ function ServiceTickets() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                  {sells.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-10 text-center text-sm text-slate-400">
+                        No sell/trade-in requests yet. Submissions from <span className="font-semibold">/sell</span> will appear here.
+                      </td>
+                    </tr>
+                  )}
                   {sells.map(sell => (
                     <tr key={sell.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                       <td className="p-4">
@@ -280,7 +327,7 @@ function ServiceTickets() {
                       </td>
                       <td className="p-4 text-xs">
                         <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                          sell.status === 'Approved' || sell.status === 'Payout Settle'
+                          sell.status === 'Approved'
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400'
                         }`}>
@@ -312,6 +359,11 @@ function ServiceTickets() {
                   <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300">Chat Conversations inbox</h3>
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-850">
+                  {chats.length === 0 && (
+                    <p className="p-6 text-center text-sm text-slate-400">
+                      No live chat conversations yet. Customer messages from the store chatbot will appear here.
+                    </p>
+                  )}
                   {chats.map(chat => {
                     const latestMsg = chat.messages?.[chat.messages.length - 1];
                     const isSelected = activeChat?.id === chat.id;
@@ -325,7 +377,7 @@ function ServiceTickets() {
                         }`}
                       >
                         <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-xl flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 flex-shrink-0">
-                          {chat.customerName[0]}
+                          {(chat.customerName || '?')[0]}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center">
@@ -352,7 +404,7 @@ function ServiceTickets() {
                     <div className="p-4 border-b border-slate-900 bg-slate-900/60 backdrop-blur-xl flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-600/30 flex items-center justify-center text-blue-400 font-bold text-sm">
-                          {activeChat.customerName[0]}
+                          {(activeChat.customerName || '?')[0]}
                         </div>
                         <div>
                           <h4 className="font-bold text-xs text-white">{activeChat.customerName}</h4>
@@ -377,7 +429,7 @@ function ServiceTickets() {
                             <div className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed ${
                               isCustomer 
                                 ? 'bg-slate-900 border border-slate-800 text-white rounded-tl-none' 
-                                : 'bg-gradient-to-tr from-blue-600 to-purple-600 text-white rounded-tr-none shadow-md shadow-blue-500/10'
+                                : 'btn-brand text-white rounded-tr-none'
                             }`}>
                               <p>{msg.text}</p>
                               <span className="text-[8px] text-slate-400 block mt-1 text-right font-mono">
@@ -423,9 +475,9 @@ function ServiceTickets() {
       )}
 
       {/* DETAIL EDITOR MODAL FOR REPAIRS / SELLS */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl border border-slate-200/50 dark:border-slate-850 shadow-2xl transition-all">
+      <ModalOverlay open={!!selectedTicket}>
+        {selectedTicket && (
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl border border-slate-200/50 dark:border-slate-850 shadow-2xl transition-all max-h-[90vh] overflow-y-auto">
             
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-800 dark:text-white">
@@ -482,17 +534,14 @@ function ServiceTickets() {
                   {activeTab === 'repairs' ? (
                     <>
                       <option value="Pending">Pending</option>
-                      <option value="Under Diagnosis">Under Diagnosis</option>
-                      <option value="In Progress">In Progress</option>
+                      <option value="Processing">Processing</option>
                       <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
+                      <option value="Archived">Archived</option>
                     </>
                   ) : (
                     <>
                       <option value="Pending">Pending</option>
                       <option value="Approved">Approved</option>
-                      <option value="Inspecting">Inspecting</option>
-                      <option value="Payout Settle">Payout Settle</option>
                       <option value="Rejected">Rejected</option>
                     </>
                   )}
@@ -520,15 +569,15 @@ function ServiceTickets() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold text-sm transition shadow-md"
+                  className="btn-brand px-5 py-2.5 rounded-xl font-bold text-sm"
                 >
                   Save Ticket logs
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </ModalOverlay>
 
     </div>
   );

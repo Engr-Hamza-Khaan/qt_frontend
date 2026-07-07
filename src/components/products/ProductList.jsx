@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
+import { getMediaUrl, getProductImage } from '../../store/utils';
+import { formatCurrency } from '../../utils/formatters';
+import { isStaffOrAbove } from '../../utils/roles';
+import ModalOverlay from '../ui/ModalOverlay';
 import { 
   Package, Plus, Search, Tag, Eye, Edit2, Copy, Trash2, 
   Layers, Layers2, Sparkles, Check, X, AlertCircle, Upload, Image as ImageIcon
 } from 'lucide-react';
 
 function ProductList() {
+  const { user } = useAuth();
+  const canAssignSupplier = isStaffOrAbove(user?.role);
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -34,6 +43,12 @@ function ProductList() {
   const [platform, setPlatform] = useState('PS5');
   const [status, setStatus] = useState('Published');
   const [tags, setTags] = useState('');
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [isBestSeller, setIsBestSeller] = useState(false);
+  const [isFlashSale, setIsFlashSale] = useState(false);
+  const [vendorId, setVendorId] = useState('');
 
   // Form States - Category
   const [catName, setCatName] = useState('');
@@ -49,16 +64,25 @@ function ProductList() {
   const [varCostPrice, setVarCostPrice] = useState('');
   const [varStock, setVarStock] = useState('');
   const [varThreshold, setVarThreshold] = useState('');
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [pendingImages, setPendingImages] = useState([]);
+  const [formMedia, setFormMedia] = useState([]);
+  const [savingProduct, setSavingProduct] = useState(false);
 
   // Fetch Data
   const fetchData = async () => {
     setLoading(true);
     try {
-      const prodRes = await api.products.getAll();
-      if (prodRes.success) setProducts(prodRes.data.products);
+      const prodRes = await api.products.getAll({ limit: 500 });
+      if (prodRes.success) setProducts(Array.isArray(prodRes.data) ? prodRes.data : prodRes.data?.products || []);
       
       const catRes = await api.categories.getAll();
       if (catRes.success) setCategories(catRes.data);
+
+      if (canAssignSupplier) {
+        const vendorRes = await api.vendors.getAll({ status: 'Active' });
+        if (vendorRes.success) setVendors(vendorRes.data);
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch products or categories.');
     } finally {
@@ -79,6 +103,21 @@ function ProductList() {
     return matchesSearch && matchesCategory && matchesCondition;
   });
 
+  const clearPendingImages = () => {
+    setPendingImages((prev) => {
+      prev.forEach((img) => {
+        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+      });
+      return [];
+    });
+  };
+
+  const closeProductModal = () => {
+    clearPendingImages();
+    setFormMedia([]);
+    setShowProductModal(false);
+  };
+
   // Product Handlers
   const handleOpenCreateModal = () => {
     setEditingProduct(null);
@@ -90,6 +129,14 @@ function ProductList() {
     setPlatform('PS5');
     setStatus('Published');
     setTags('');
+    setPrice('');
+    setStock('');
+    setIsFeatured(false);
+    setIsBestSeller(false);
+    setIsFlashSale(false);
+    setVendorId('');
+    clearPendingImages();
+    setFormMedia([]);
     setShowProductModal(true);
   };
 
@@ -103,6 +150,14 @@ function ProductList() {
     setPlatform(product.attributes?.platform || 'PS5');
     setStatus(product.status);
     setTags(product.tags ? product.tags.join(', ') : '');
+    setPrice(product.variations?.[0]?.price?.toString() || '');
+    setStock(product.variations?.[0]?.stockQuantity?.toString() || '');
+    setIsFeatured(!!product.isFeatured);
+    setIsBestSeller(!!product.isBestSeller);
+    setIsFlashSale(!!product.isFlashSale);
+    setVendorId(product.vendorId || '');
+    clearPendingImages();
+    setFormMedia(product.media || []);
     setShowProductModal(true);
   };
 
@@ -114,12 +169,29 @@ function ProductList() {
       description,
       condition,
       modelNumber,
-      categoryId: parseInt(categoryId),
+      categoryId: categoryId || null,
       status,
       tags: tagArray,
-      attributes: { platform }
+      attributes: { platform },
+      isFeatured,
+      isBestSeller,
+      isFlashSale,
     };
 
+    if (canAssignSupplier) {
+      payload.vendorId = vendorId || null;
+    }
+
+    if (!editingProduct && price) {
+      payload.variations = [{
+        platform,
+        price: parseFloat(price),
+        stockQuantity: stock ? parseInt(stock, 10) : 0,
+        isActive: true,
+      }];
+    }
+
+    setSavingProduct(true);
     try {
       let res;
       if (editingProduct) {
@@ -129,11 +201,21 @@ function ProductList() {
       }
 
       if (res.success) {
-        setShowProductModal(false);
+        const productId = editingProduct?.id || res.data?.id;
+
+        if (!editingProduct && pendingImages.length > 0 && productId) {
+          for (const img of pendingImages) {
+            await api.products.uploadMedia(productId, img.file);
+          }
+        }
+
+        closeProductModal();
         fetchData();
       }
     } catch (err) {
       alert(err.message || 'Error saving product');
+    } finally {
+      setSavingProduct(false);
     }
   };
 
@@ -181,17 +263,24 @@ function ProductList() {
   };
 
   // Variation Handlers
-  const handleManageVariations = (product) => {
-    setSelectedProductForVariations(product);
-    setVarSku('');
-    setVarColor('');
-    setVarStorage('');
-    setVarEdition('');
-    setVarPrice('');
-    setVarCostPrice('');
-    setVarStock('');
-    setVarThreshold('');
-    setShowVariationModal(true);
+  const handleManageVariations = async (product) => {
+    try {
+      const res = await api.products.getById(product.id);
+      if (!res.success) return;
+
+      setSelectedProductForVariations(res.data);
+      setVarSku('');
+      setVarColor('');
+      setVarStorage('');
+      setVarEdition('');
+      setVarPrice('');
+      setVarCostPrice('');
+      setVarStock('');
+      setVarThreshold('');
+      setShowVariationModal(true);
+    } catch (err) {
+      alert(err.message || 'Error loading product details');
+    }
   };
 
   const handleAddVariation = async (e) => {
@@ -249,33 +338,91 @@ function ProductList() {
     }
   };
 
+  const syncProductInList = (updatedProduct) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p))
+    );
+  };
+
+  const validateMediaFile = (file) => {
+    const allowedTypes = /^image\/(jpeg|jpg|png|gif|webp|bmp|svg\+xml|heic|heif)|video\//i;
+    if (!allowedTypes.test(file.type) && !/\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(file.name)) {
+      alert('Please upload a valid image file (jpg, png, gif, webp).');
+      return false;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image is too large. Maximum size is 10MB.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handlePendingImageSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const validFiles = files.filter(validateMediaFile);
+    if (!validFiles.length) {
+      e.target.value = '';
+      return;
+    }
+
+    setPendingImages((prev) => [
+      ...prev,
+      ...validFiles.map((file) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      })),
+    ]);
+    e.target.value = '';
+  };
+
+  const handleRemovePendingImage = (id) => {
+    setPendingImages((prev) => {
+      const item = prev.find((img) => img.id === id);
+      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      return prev.filter((img) => img.id !== id);
+    });
+  };
+
   // Media Handlers
-  const handleMediaUpload = async (e, productId) => {
+  const handleMediaUpload = async (e, productId, onUpdated) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    if (!validateMediaFile(file)) {
+      e.target.value = '';
+      return;
+    }
+
+    setUploadingMedia(true);
     try {
       const res = await api.products.uploadMedia(productId, file);
       if (res.success) {
         const updatedProdRes = await api.products.getById(productId);
         if (updatedProdRes.success) {
-          setSelectedProductForVariations(updatedProdRes.data);
-          fetchData();
+          onUpdated?.(updatedProdRes.data);
         }
       }
     } catch (err) {
       alert(err.message || 'Error uploading file');
+    } finally {
+      setUploadingMedia(false);
+      e.target.value = '';
     }
   };
 
-  const handleDeleteMedia = async (mediaId, productId) => {
+  const handleDeleteMedia = async (mediaId, productId, onUpdated) => {
     if (!window.confirm('Delete this media file?')) return;
     try {
       const res = await api.products.deleteMedia(mediaId);
       if (res.success) {
         const updatedProdRes = await api.products.getById(productId);
         if (updatedProdRes.success) {
-          setSelectedProductForVariations(updatedProdRes.data);
-          fetchData();
+          onUpdated?.(updatedProdRes.data);
         }
       }
     } catch (err) {
@@ -299,17 +446,17 @@ function ProductList() {
         </div>
         
         <div className="flex gap-3">
-          <button 
+          {/* <button 
             onClick={() => setShowCategoryModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 rounded-xl transition-all font-medium text-sm border border-slate-200/50 dark:border-slate-700/50"
           >
             <Layers className="w-4 h-4" />
             New Category
-          </button>
+          </button> */}
           
           <button 
             onClick={handleOpenCreateModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl transition-all font-semibold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+            className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
             Add Product
@@ -352,7 +499,6 @@ function ProductList() {
             <option value="">All Conditions</option>
             <option value="New">New</option>
             <option value="Used">Used</option>
-            <option value="Refurbished">Refurbished</option>
           </select>
         </div>
       </div>
@@ -378,6 +524,9 @@ function ProductList() {
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Product Info</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Condition</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
+                  {canAssignSupplier && (
+                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Supplier</th>
+                  )}
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Platform</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">SKUs / Variations</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
@@ -386,9 +535,7 @@ function ProductList() {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredProducts.map(p => {
-                  const mediaUrl = p.media && p.media.length > 0 
-                    ? `http://localhost:5000${p.media[0].filePath}` 
-                    : null;
+                  const mediaUrl = getProductImage(p);
                   
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
@@ -419,6 +566,13 @@ function ProductList() {
                           {p.category?.name || 'Uncategorized'}
                         </span>
                       </td>
+                      {canAssignSupplier && (
+                        <td className="p-4">
+                          <span className="text-sm text-slate-600 dark:text-slate-400">
+                            {p.vendor?.companyName || 'Store (No supplier)'}
+                          </span>
+                        </td>
+                      )}
                       <td className="p-4">
                         <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-md font-semibold">
                           {p.attributes?.platform || 'N/A'}
@@ -477,23 +631,103 @@ function ProductList() {
       )}
 
       {/* MODAL 1: CREATE OR EDIT PRODUCT */}
-      {showProductModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all duration-300">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20">
-              <h3 className="font-bold text-lg text-slate-800 dark:text-white">
+      <ModalOverlay open={showProductModal} align="bottom-mobile">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl mx-auto max-h-[100dvh] sm:max-h-[min(90vh,900px)] rounded-t-2xl sm:rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all duration-300 flex flex-col">
+            <div className="shrink-0 p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-950/20">
+              <h3 className="font-bold text-base sm:text-lg text-slate-800 dark:text-white truncate">
                 {editingProduct ? 'Edit Catalog Product' : 'Add New Product to Catalog'}
               </h3>
               <button 
-                onClick={() => setShowProductModal(false)}
-                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                type="button"
+                onClick={closeProductModal}
+                className="shrink-0 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSaveProduct} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
+              <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
+                <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  Product Images
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {editingProduct
+                    ? 'Upload or remove product photos. First image is used as the featured image on the store.'
+                    : 'Select images now — they will be uploaded when you save the product.'}
+                </p>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                  {editingProduct
+                    ? formMedia.map((m) => (
+                        <div key={m.id} className="relative group aspect-square rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-200 dark:bg-slate-900">
+                          <img src={getMediaUrl(m.url)} className="w-full h-full object-cover" alt="" />
+                          {m.isFeatured && (
+                            <span className="absolute top-1 left-1 text-[9px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded-md">
+                              Featured
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteMedia(m.id, editingProduct.id, (data) => {
+                                setFormMedia(data.media || []);
+                                setEditingProduct(data);
+                                syncProductInList(data);
+                              })
+                            }
+                            className="absolute inset-0 bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ))
+                    : pendingImages.map((img) => (
+                        <div key={img.id} className="relative group aspect-square rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-200 dark:bg-slate-900">
+                          <img src={img.previewUrl} className="w-full h-full object-cover" alt="" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePendingImage(img.id)}
+                            className="absolute inset-0 bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+
+                  <label
+                    className={`aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-400 flex flex-col items-center justify-center transition-colors bg-white dark:bg-slate-950 ${
+                      uploadingMedia || savingProduct ? 'opacity-60 pointer-events-none' : 'cursor-pointer'
+                    }`}
+                  >
+                    <Upload className="w-5 h-5 text-slate-400" />
+                    <span className="text-[10px] text-slate-500 mt-1 font-semibold">
+                      {uploadingMedia ? 'Uploading...' : 'Upload'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
+                      className="hidden"
+                      multiple={!editingProduct}
+                      disabled={uploadingMedia || savingProduct}
+                      onChange={
+                        editingProduct
+                          ? (e) =>
+                              handleMediaUpload(e, editingProduct.id, (data) => {
+                                setFormMedia(data.media || []);
+                                setEditingProduct(data);
+                                syncProductInList(data);
+                              })
+                          : handlePendingImageSelect
+                      }
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-500 uppercase">Product Title</label>
                   <input
@@ -529,7 +763,7 @@ function ProductList() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-500 uppercase">Category</label>
                   <select
@@ -552,7 +786,6 @@ function ProductList() {
                   >
                     <option value="New">New</option>
                     <option value="Used">Used</option>
-                    <option value="Refurbished">Refurbished</option>
                   </select>
                 </div>
 
@@ -568,7 +801,7 @@ function ProductList() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-500 uppercase">Tags (comma-separated)</label>
                   <input
@@ -591,32 +824,113 @@ function ProductList() {
                     <option value="Draft">Draft</option>
                   </select>
                 </div>
+
+                {canAssignSupplier && (
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-500 uppercase">Assign Supplier</label>
+                    <select
+                      value={vendorId}
+                      onChange={(e) => setVendorId(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+                    >
+                      <option value="">Store owned (no supplier)</option>
+                      {vendors.map((v) => (
+                        <option key={v.id} value={v.id}>{v.companyName}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Supplier gets this product in their portal. Orders can still assign any vendor at fulfillment time.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2">
+              {!editingProduct && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500 uppercase">Price (PKR)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+                      placeholder="e.g. 499.99"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500 uppercase">Stock Quantity</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={stock}
+                      onChange={(e) => setStock(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+                      placeholder="e.g. 10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-4 pt-1">
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  Featured on homepage
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isBestSeller}
+                    onChange={(e) => setIsBestSeller(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  Best Seller
+                </label>
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFlashSale}
+                    onChange={(e) => setIsFlashSale(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  Flash Deal
+                </label>
+              </div>
+              </div>
+
+              <div className="shrink-0 p-4 sm:p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowProductModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition"
+                  onClick={closeProductModal}
+                  disabled={savingProduct}
+                  className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-bold text-sm transition-all shadow-md"
+                  disabled={savingProduct}
+                  className="btn-brand w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-sm disabled:opacity-60"
                 >
-                  Save Product
+                  {savingProduct ? 'Saving...' : 'Save Product'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </ModalOverlay>
 
       {/* MODAL 2: CREATE CATEGORY */}
-      {showCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl">
+      <ModalOverlay open={showCategoryModal}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200/50 dark:border-slate-800 shadow-2xl">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-800 dark:text-white">Add New Category</h3>
               <button 
@@ -675,20 +989,19 @@ function ProductList() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold text-sm transition shadow-md"
+                  className="btn-brand px-5 py-2.5 rounded-xl font-bold text-sm"
                 >
                   Create Category
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </ModalOverlay>
 
       {/* MODAL 3: MANAGE VARIATIONS & MEDIA */}
       {showVariationModal && selectedProductForVariations && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all">
+      <ModalOverlay open>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl mx-auto max-h-[90vh] overflow-hidden rounded-3xl border border-slate-200/50 dark:border-slate-800 shadow-2xl transition-all flex flex-col">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20">
               <div>
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white">
@@ -722,10 +1035,15 @@ function ProductList() {
                   <div className="grid grid-cols-3 gap-2">
                     {selectedProductForVariations.media?.map(m => (
                       <div key={m.id} className="relative group aspect-square rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-200 dark:bg-slate-900">
-                        <img src={`http://localhost:5000${m.filePath}`} className="w-full h-full object-cover" alt="" />
+                        <img src={getMediaUrl(m.url)} className="w-full h-full object-cover" alt="" />
                         <button
                           type="button"
-                          onClick={() => handleDeleteMedia(m.id, selectedProductForVariations.id)}
+                          onClick={() =>
+                            handleDeleteMedia(m.id, selectedProductForVariations.id, (data) => {
+                              setSelectedProductForVariations(data);
+                              syncProductInList(data);
+                            })
+                          }
                           className="absolute inset-0 bg-red-600/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold"
                         >
                           Delete
@@ -734,14 +1052,22 @@ function ProductList() {
                     ))}
                     
                     {/* Upload button wrapper */}
-                    <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-400 flex flex-col items-center justify-center cursor-pointer transition-colors bg-white dark:bg-slate-950">
+                    <label className={`aspect-square rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-400 flex flex-col items-center justify-center transition-colors bg-white dark:bg-slate-950 ${uploadingMedia ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}>
                       <Upload className="w-5 h-5 text-slate-400" />
-                      <span className="text-[10px] text-slate-500 mt-1 font-semibold">Upload</span>
+                      <span className="text-[10px] text-slate-500 mt-1 font-semibold">
+                        {uploadingMedia ? 'Uploading...' : 'Upload'}
+                      </span>
                       <input 
                         type="file" 
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/svg+xml"
                         className="hidden" 
-                        onChange={(e) => handleMediaUpload(e, selectedProductForVariations.id)} 
+                        disabled={uploadingMedia}
+                        onChange={(e) =>
+                          handleMediaUpload(e, selectedProductForVariations.id, (data) => {
+                            setSelectedProductForVariations(data);
+                            syncProductInList(data);
+                          })
+                        }
                       />
                     </label>
                   </div>
@@ -799,7 +1125,7 @@ function ProductList() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Price ($)</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Price (PKR)</label>
                       <input 
                         type="number" 
                         step="0.01"
@@ -811,7 +1137,7 @@ function ProductList() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Cost Price ($)</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Cost Price (PKR)</label>
                       <input 
                         type="number" 
                         step="0.01"
@@ -849,7 +1175,7 @@ function ProductList() {
 
                   <button
                     type="submit"
-                    className="w-full py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl text-xs font-bold transition shadow-md pt-1.5"
+                    className="btn-brand w-full py-2 rounded-xl text-xs font-bold pt-1.5"
                   >
                     Add Variation SKU
                   </button>
@@ -886,7 +1212,7 @@ function ProductList() {
                                 {[v.color, v.storage, v.edition].filter(Boolean).join(' | ') || 'Default'}
                               </td>
                               <td className="p-3 font-semibold text-slate-800 dark:text-white">
-                                ${v.price} <span className="text-[10px] text-slate-400 font-normal">(${v.costPrice || '0.00'} cost)</span>
+                                {formatCurrency(v.price)} <span className="text-[10px] text-slate-400 font-normal">({formatCurrency(v.costPrice || 0)} cost)</span>
                               </td>
                               <td className="p-3">
                                 <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
@@ -929,7 +1255,7 @@ function ProductList() {
               </button>
             </div>
           </div>
-        </div>
+      </ModalOverlay>
       )}
 
     </div>

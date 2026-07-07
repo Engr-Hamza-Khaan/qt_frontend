@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { 
   ShoppingBag, Search, Eye, RefreshCw, Truck, CreditCard, 
-  User, CheckCircle, Clock, X, AlertCircle, Award, ExternalLink
+  User, CheckCircle, Clock, X, AlertCircle, Award, ExternalLink, Trash2
 } from 'lucide-react';
+import ModalOverlay from '../ui/ModalOverlay';
+import { formatCurrency } from '../../utils/formatters';
 
 function OrderList() {
   const [orders, setOrders] = useState([]);
@@ -31,6 +33,7 @@ function OrderList() {
   // Current logged in user info (to restrict options depending on Vendor role)
   const currentUser = api.auth.getCurrentUser();
   const isAdmin = currentUser?.role === 'Admin' || currentUser?.role === 'Super Admin';
+  const canManageOrders = ['Admin', 'Super Admin', 'Staff'].includes(currentUser?.role);
 
   const fetchData = async () => {
     setLoading(true);
@@ -107,7 +110,7 @@ function OrderList() {
     }
 
     try {
-      const res = await api.orders.assignSupplier(selectedOrder.id, itemId, parseInt(selectedVendorId));
+      const res = await api.orders.assignSupplier(selectedOrder.id, itemId, selectedVendorId);
       if (res.success) {
         alert('Supplier assigned and inventory allocated!');
         handleViewDetails(selectedOrder.id);
@@ -115,6 +118,23 @@ function OrderList() {
       }
     } catch (err) {
       alert(err.message || 'Error assigning supplier');
+    }
+  };
+
+  const handleDeleteOrder = async (order) => {
+    const confirmed = window.confirm(
+      `Delete order ${order.orderNumber}? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await api.orders.delete(order.id);
+      if (res.success) {
+        if (selectedOrder?.id === order.id) setSelectedOrder(null);
+        fetchData();
+      }
+    } catch (err) {
+      alert(err.message || 'Error deleting order');
     }
   };
 
@@ -253,7 +273,7 @@ function OrderList() {
                       {o.items?.length || 0}
                     </td>
                     <td className="p-4 text-sm font-bold text-slate-800 dark:text-white text-right">
-                      ${parseFloat(o.totalAmount).toFixed(2)}
+                      {formatCurrency(o.totalAmount)}
                     </td>
                     <td className="p-4">
                       <span className={`text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${getOrderStatusBadge(o.orderStatus)}`}>
@@ -266,12 +286,24 @@ function OrderList() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <button
-                        onClick={() => handleViewDetails(o.id)}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition"
-                      >
-                        Details
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleViewDetails(o.id)}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition"
+                        >
+                          Details
+                        </button>
+                        {canManageOrders && (
+                          <button
+                            onClick={() => handleDeleteOrder(o)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition"
+                            title="Delete order"
+                            aria-label={`Delete order ${o.orderNumber}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -282,9 +314,9 @@ function OrderList() {
       )}
 
       {/* DETAIL MODAL WITH SHIPPER ASSIGNMENT & STATUS UPDATE */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all">
+      <ModalOverlay open={!!selectedOrder}>
+        {selectedOrder && (
+          <div className="bg-white dark:bg-slate-900 w-full max-w-6xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all">
             
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between">
               <div>
@@ -323,12 +355,12 @@ function OrderList() {
                             <p className="text-xs text-slate-400 mt-0.5">SKU: {variation?.sku || 'N/A'}</p>
                             <p className="text-xs text-slate-500 mt-1">
                               Qty: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.quantity}</span> | 
-                              Price: <span className="font-semibold text-slate-700 dark:text-slate-300">${item.price}</span>
+                              Price: <span className="font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(item.price)}</span>
                             </p>
                           </div>
                           
                           {/* Assignment flow */}
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
                             <div className="text-right">
                               <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fulfillment status</div>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md mt-0.5 inline-block ${
@@ -355,12 +387,12 @@ function OrderList() {
                                     >
                                       <option value="">Select Supplier</option>
                                       {vendors.map(v => (
-                                        <option key={v.id} value={v.id}>{v.companyName} (${v.balance} bal)</option>
+                                        <option key={v.id} value={v.id}>{v.companyName} ({formatCurrency(v.balance)} bal)</option>
                                       ))}
                                     </select>
                                     <button 
                                       onClick={() => handleAssignSupplier(item.id)}
-                                      className="px-2 py-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg text-[10px] font-bold"
+                                      className="btn-brand px-2 py-1 rounded-lg text-[10px] font-bold"
                                     >
                                       Assign
                                     </button>
@@ -436,12 +468,12 @@ function OrderList() {
                     {selectedOrder.couponCode && (
                       <div className="flex justify-between text-emerald-600">
                         <span>Coupon ({selectedOrder.couponCode}):</span>
-                        <span>-${parseFloat(selectedOrder.discountAmount).toFixed(2)}</span>
+                        <span>-{formatCurrency(selectedOrder.discountAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-base font-bold border-t border-slate-200 dark:border-slate-800 pt-2 text-slate-800 dark:text-white">
                       <span>Grand Total:</span>
-                      <span>${parseFloat(selectedOrder.totalAmount).toFixed(2)}</span>
+                      <span>{formatCurrency(selectedOrder.totalAmount)}</span>
                     </div>
                   </div>
                 </div>
@@ -517,7 +549,7 @@ function OrderList() {
 
                     <button
                       type="submit"
-                      className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-xl text-xs transition shadow-md"
+                      className="btn-brand w-full py-2.5 font-bold rounded-xl text-xs"
                     >
                       Update Order logistics
                     </button>
@@ -535,18 +567,28 @@ function OrderList() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 text-right">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between gap-3">
+              {canManageOrders && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteOrder(selectedOrder)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 rounded-xl font-bold text-xs transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Order
+                </button>
+              )}
               <button 
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition"
+                className="ml-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition"
               >
                 Close Details
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalOverlay>
 
     </div>
   );

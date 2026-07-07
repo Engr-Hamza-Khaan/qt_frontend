@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
+import { isAdmin } from '../../utils/roles';
 import { 
   Users, Search, UserCheck, UserX, Clock, ShoppingCart, 
-  Mail, Phone, BookOpen, AlertCircle, X, ChevronRight
+  Mail, Phone, BookOpen, AlertCircle, X, ChevronRight, Trash2
 } from 'lucide-react';
+import ModalOverlay from '../ui/ModalOverlay';
+import { formatCurrency } from '../../utils/formatters';
 
 function CustomerList() {
+  const { user } = useAuth();
+  const adminUser = isAdmin(user?.role);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,6 +61,18 @@ function CustomerList() {
     }
   };
 
+  const handleDeleteCustomer = async (cust) => {
+    if (!window.confirm(`Delete customer "${cust.name}"? This cannot be undone.`)) return;
+
+    try {
+      await api.customers.delete(cust.id);
+      if (selectedCust?.id === cust.id) setSelectedCust(null);
+      setCustomers(prev => prev.filter(c => c.id !== cust.id));
+    } catch (err) {
+      alert(err.message || 'Failed to delete customer.');
+    }
+  };
+
   const handleToggleStatus = async (cust, currentStatus) => {
     const confirmationText = currentStatus 
       ? `Are you sure you want to BLOCK ${cust.name}? They will lose access to log in.`
@@ -95,7 +113,7 @@ function CustomerList() {
           Customers database
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Track customer accounts, profile details, wishlist trends, and block/unblock buyer profiles.
+          Track customer accounts, profile details, wishlist trends, and manage buyer profiles.
         </p>
       </div>
 
@@ -147,7 +165,7 @@ function CustomerList() {
 
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-tr from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/10">
+                  <div className="avatar-brand w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-lg">
                     {cust.name.split(' ').map(n=>n[0]).join('')}
                   </div>
                   <div>
@@ -180,13 +198,24 @@ function CustomerList() {
                     {cust.isActive ? 'Block Account' : 'Activate Account'}
                   </button>
 
-                  <button
-                    onClick={() => handleSelectCustomer(cust)}
-                    className="flex items-center gap-0.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-bold"
-                  >
-                    View details
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {adminUser && (
+                      <button
+                        onClick={() => handleDeleteCustomer(cust)}
+                        title="Delete customer"
+                        className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/50 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleSelectCustomer(cust)}
+                      className="flex items-center gap-0.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-bold"
+                    >
+                      View details
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -195,8 +224,8 @@ function CustomerList() {
       )}
 
       {/* DETAIL MODAL WITH ORDER HISTORY & WISHLIST */}
-      {selectedCust && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <ModalOverlay open={!!selectedCust}>
+        {selectedCust && (
           <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all">
             
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between">
@@ -284,7 +313,7 @@ function CustomerList() {
                               <tr key={order.id} className="hover:bg-slate-100/50 dark:hover:bg-slate-900/30">
                                 <td className="p-3 font-semibold text-blue-600 dark:text-blue-400">{order.orderNumber}</td>
                                 <td className="p-3 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
-                                <td className="p-3 text-right font-bold text-slate-800 dark:text-white">${parseFloat(order.totalAmount).toFixed(2)}</td>
+                                <td className="p-3 text-right font-bold text-slate-800 dark:text-white">{formatCurrency(order.totalAmount)}</td>
                                 <td className="p-3 text-center">
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700 uppercase">
                                     {order.orderStatus}
@@ -306,7 +335,7 @@ function CustomerList() {
                         <div key={w.id} className="p-3 bg-slate-50 dark:bg-slate-950/40 border border-slate-200/50 dark:border-slate-800 rounded-xl flex items-center justify-between text-xs">
                           <div>
                             <p className="font-semibold text-slate-800 dark:text-slate-300">{w.title}</p>
-                            <p className="text-slate-400">${w.price}</p>
+                            <p className="text-slate-400">{formatCurrency(w.price)}</p>
                           </div>
                           <span className="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded">
                             Tracked
@@ -321,18 +350,28 @@ function CustomerList() {
               </div>
             )}
 
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 text-right">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between">
+              {adminUser && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCustomer(selectedCust)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-red-50 dark:bg-red-950/30 text-red-600 hover:bg-red-100 dark:hover:bg-red-950/50 rounded-xl font-bold text-xs transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Customer
+                </button>
+              )}
               <button 
                 type="button"
                 onClick={() => setSelectedCust(null)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition"
+                className={`px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition ${adminUser ? '' : 'ml-auto'}`}
               >
                 Close Profile
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalOverlay>
 
     </div>
   );

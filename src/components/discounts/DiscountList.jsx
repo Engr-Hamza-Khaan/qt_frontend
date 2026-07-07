@@ -4,6 +4,8 @@ import {
   Percent, Plus, Search, Tag, Calendar, Layers, 
   Settings, Check, X, Trash2, Edit2, AlertCircle
 } from 'lucide-react';
+import ModalOverlay from '../ui/ModalOverlay';
+import { formatCurrency } from '../../utils/formatters';
 
 function DiscountList() {
   const [discounts, setDiscounts] = useState([]);
@@ -37,7 +39,7 @@ function DiscountList() {
       if (catRes.success) setCategories(catRes.data);
 
       const prodRes = await api.products.getAll();
-      if (prodRes.success) setProducts(prodRes.data.products);
+      if (prodRes.success) setProducts(Array.isArray(prodRes.data) ? prodRes.data : prodRes.data?.products || []);
     } catch (err) {
       setError(err.message || 'Failed to retrieve discounts.');
     } finally {
@@ -85,7 +87,7 @@ function DiscountList() {
       type,
       value: parseFloat(value),
       applyTo,
-      targetId: targetId ? parseInt(targetId) : null,
+      targetId: targetId || null,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       isActive
@@ -137,7 +139,7 @@ function DiscountList() {
         
         <button 
           onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl transition-all font-semibold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+          className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           Create Discount
@@ -202,7 +204,7 @@ function DiscountList() {
                     <div className="text-right">
                       <p className="text-[10px] text-slate-400 font-bold uppercase">Reduction</p>
                       <p className="text-base font-black text-slate-800 dark:text-white">
-                        {disc.type === 'Percentage' ? `${disc.value}%` : `$${disc.value}`} OFF
+                        {disc.type === 'Percentage' ? `${disc.value}%` : formatCurrency(disc.value)} OFF
                       </p>
                     </div>
                   </div>
@@ -243,9 +245,8 @@ function DiscountList() {
       )}
 
       {/* CREATE / EDIT VOUCHER MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all">
+      <ModalOverlay open={showModal}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all max-h-[90vh] overflow-y-auto">
             
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between">
               <h3 className="font-bold text-lg text-slate-800 dark:text-white">
@@ -310,7 +311,7 @@ function DiscountList() {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none dark:text-white"
                   >
                     <option value="Percentage">Percentage (%)</option>
-                    <option value="FixedAmount">Fixed Amount ($)</option>
+                    <option value="Fixed Amount">Fixed Amount</option>
                   </select>
                 </div>
 
@@ -414,15 +415,14 @@ function DiscountList() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold text-sm transition shadow-md"
+                  className="btn-brand px-5 py-2.5 rounded-xl font-bold text-sm"
                 >
                   Save Campaign
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+      </ModalOverlay>
 
     </div>
   );

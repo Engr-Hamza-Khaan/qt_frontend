@@ -17,7 +17,7 @@ function ActivityFeed() {
             type: "payment",
             icon: CreditCard,
             title: "Payment Completed",
-            description: "Payment of $250 has been successfully processed.",
+            description: "Payment of Rs 250 has been successfully processed.",
             time: "15 mins ago",
             color: "#10b981", // green
             bgColor: "bg-emerald-100 dark:bg-emerald-900/30"

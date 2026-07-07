@@ -1,25 +1,18 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Helper for HTTP requests
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
-  const headers = {
-    ...options.headers,
-  };
+  const headers = { ...options.headers };
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Determine if we should set Content-Type to JSON (don't set it for FormData upload)
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const config = {
-    ...options,
-    headers,
-  };
+  const config = { ...options, headers };
 
   if (config.body && !(config.body instanceof FormData) && typeof config.body === 'object') {
     config.body = JSON.stringify(config.body);
@@ -27,11 +20,10 @@ async function request(endpoint, options = {}) {
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-  // Auto logout on 401 Unauthorized
   if (response.status === 401) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    if (!window.location.pathname.includes('/login') && window.location.reload) {
+    if (!window.location.pathname.includes('/admin/login')) {
       window.dispatchEvent(new Event('auth-logout'));
     }
   }
@@ -44,34 +36,42 @@ async function request(endpoint, options = {}) {
   return responseData;
 }
 
+function extractUser(data) {
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+    vendorProfile: data.vendorProfile,
+  };
+}
+
 export const api = {
-  // Authentication
   auth: {
     login: async (email, password) => {
       const res = await request('/auth/login', {
         method: 'POST',
         body: { email, password },
       });
-      if (res.token) {
-        localStorage.setItem('token', res.token);
-        localStorage.setItem('user', JSON.stringify(res.user));
+      const payload = res.data || res;
+      const token = payload.token;
+      if (token) {
+        const user = extractUser(payload);
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        return user;
       }
-      return res;
+      throw new Error('Login failed — no token received');
     },
     register: async (userData) => {
-      return request('/auth/register', {
-        method: 'POST',
-        body: userData,
-      });
+      return request('/auth/register', { method: 'POST', body: userData });
     },
     getProfile: async () => {
-      return request('/auth/profile');
+      const res = await request('/auth/profile');
+      return res.data || res;
     },
     updateProfile: async (profileData) => {
-      return request('/auth/profile', {
-        method: 'PUT',
-        body: profileData,
-      });
+      return request('/auth/profile', { method: 'PUT', body: profileData });
     },
     logout: () => {
       localStorage.removeItem('token');
@@ -81,269 +81,113 @@ export const api = {
     getCurrentUser: () => {
       try {
         return JSON.parse(localStorage.getItem('user'));
-      } catch (e) {
+      } catch {
         return null;
       }
     },
-    isAuthenticated: () => {
-      return !!localStorage.getItem('token');
-    }
+    isAuthenticated: () => !!localStorage.getItem('token'),
   },
 
-  // Reports / Analytics
   reports: {
-    getDashboardSummary: async () => {
-      return request('/reports/dashboard');
-    },
+    getDashboardSummary: async () => request('/reports/dashboard'),
     getFinancialReport: async (params = {}) => {
       const query = new URLSearchParams(params).toString();
       return request(`/reports/financial?${query}`);
-    }
+    },
   },
 
-  // Products
   products: {
     getAll: async (params = {}) => {
       const query = new URLSearchParams();
       Object.entries(params).forEach(([key, val]) => {
-        if (val !== undefined && val !== null && val !== '') {
-          query.append(key, val);
-        }
+        if (val !== undefined && val !== null && val !== '') query.append(key, val);
       });
       return request(`/products?${query.toString()}`);
     },
-    getById: async (id) => {
-      return request(`/products/${id}`);
-    },
-    create: async (productData) => {
-      return request('/products', {
-        method: 'POST',
-        body: productData,
-      });
-    },
-    update: async (id, productData) => {
-      return request(`/products/${id}`, {
-        method: 'PUT',
-        body: productData,
-      });
-    },
-    delete: async (id) => {
-      return request(`/products/${id}`, {
-        method: 'DELETE',
-      });
-    },
-    duplicate: async (id) => {
-      return request(`/products/${id}/duplicate`, {
-        method: 'POST',
-      });
-    },
-    // Variations
-    addVariation: async (productId, variationData) => {
-      return request(`/products/${productId}/variations`, {
-        method: 'POST',
-        body: variationData,
-      });
-    },
-    updateVariation: async (variationId, variationData) => {
-      return request(`/products/variations/${variationId}`, {
-        method: 'PUT',
-        body: variationData,
-      });
-    },
-    deleteVariation: async (variationId) => {
-      return request(`/products/variations/${variationId}`, {
-        method: 'DELETE',
-      });
-    },
-    // Media
+    getById: async (id) => request(`/products/${id}`),
+    create: async (productData) => request('/products', { method: 'POST', body: productData }),
+    update: async (id, productData) => request(`/products/${id}`, { method: 'PUT', body: productData }),
+    delete: async (id) => request(`/products/${id}`, { method: 'DELETE' }),
+    duplicate: async (id) => request(`/products/${id}/duplicate`, { method: 'POST' }),
+    addVariation: async (productId, variationData) =>
+      request(`/products/${productId}/variations`, { method: 'POST', body: variationData }),
+    updateVariation: async (variationId, variationData) =>
+      request(`/products/variations/${variationId}`, { method: 'PUT', body: variationData }),
+    deleteVariation: async (variationId) =>
+      request(`/products/variations/${variationId}`, { method: 'DELETE' }),
     uploadMedia: async (productId, file) => {
       const formData = new FormData();
       formData.append('file', file);
-      return request(`/products/${productId}/media`, {
-        method: 'POST',
-        body: formData,
-      });
+      return request(`/products/${productId}/media`, { method: 'POST', body: formData });
     },
-    deleteMedia: async (mediaId) => {
-      return request(`/products/media/${mediaId}`, {
-        method: 'DELETE',
-      });
-    }
+    deleteMedia: async (mediaId) => request(`/products/media/${mediaId}`, { method: 'DELETE' }),
   },
 
-  // Categories
   categories: {
-    getAll: async () => {
-      return request('/products/categories');
-    },
-    create: async (categoryData) => {
-      return request('/products/categories', {
-        method: 'POST',
-        body: categoryData,
-      });
-    },
-    update: async (id, categoryData) => {
-      return request(`/products/categories/${id}`, {
-        method: 'PUT',
-        body: categoryData,
-      });
-    },
-    delete: async (id) => {
-      return request(`/products/categories/${id}`, {
-        method: 'DELETE',
-      });
-    }
+    getAll: async () => request('/products/categories'),
+    create: async (categoryData) =>
+      request('/products/categories', { method: 'POST', body: categoryData }),
+    update: async (id, categoryData) =>
+      request(`/products/categories/${id}`, { method: 'PUT', body: categoryData }),
+    delete: async (id) => request(`/products/categories/${id}`, { method: 'DELETE' }),
   },
 
-  // Orders
   orders: {
     getAll: async (params = {}) => {
       const query = new URLSearchParams(params).toString();
       return request(`/orders?${query}`);
     },
-    getById: async (id) => {
-      return request(`/orders/${id}`);
-    },
-    updateStatus: async (id, statusData) => {
-      return request(`/orders/${id}`, {
-        method: 'PUT',
-        body: statusData,
-      });
-    },
-    assignSupplier: async (orderId, itemId, vendorId) => {
-      return request(`/orders/${orderId}/items/${itemId}/assign-supplier`, {
+    getById: async (id) => request(`/orders/${id}`),
+    updateStatus: async (id, statusData) =>
+      request(`/orders/${id}`, { method: 'PUT', body: statusData }),
+    delete: async (id) => request(`/orders/${id}`, { method: 'DELETE' }),
+    assignSupplier: async (orderId, itemId, vendorId) =>
+      request(`/orders/${orderId}/items/${itemId}/assign-supplier`, {
         method: 'POST',
         body: { vendorId },
-      });
-    }
+      }),
   },
 
-  // Customers
   customers: {
-    getAll: async () => {
-      return request('/customers');
-    },
-    getById: async (id) => {
-      return request(`/customers/${id}`);
-    },
-    toggleStatus: async (id, isActive) => {
-      return request(`/customers/${id}/status`, {
-        method: 'PUT',
-        body: { isActive }
-      });
-    }
+    getAll: async () => request('/customers'),
+    getById: async (id) => request(`/customers/${id}`),
+    toggleStatus: async (id, isActive) =>
+      request(`/customers/${id}/status`, { method: 'PUT', body: { isActive } }),
+    delete: async (id) => request(`/customers/${id}`, { method: 'DELETE' }),
   },
 
-  // Vendors
   vendors: {
-    getAll: async () => {
-      return request('/vendors');
+    getAll: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/vendors?${query}`);
     },
-    getById: async (id) => {
-      return request(`/vendors/${id}`);
-    },
-    update: async (id, data) => {
-      return request(`/vendors/${id}`, {
-        method: 'PUT',
-        body: data,
-      });
-    },
-    payout: async (id, amount, notes) => {
-      return request(`/vendors/${id}/payouts`, {
-        method: 'POST',
-        body: { amount, notes },
-      });
-    }
+    getById: async (id) => request(`/vendors/${id}`),
+    create: async (data) => request('/vendors', { method: 'POST', body: data }),
+    update: async (id, data) => request(`/vendors/${id}`, { method: 'PUT', body: data }),
+    delete: async (id) => request(`/vendors/${id}`, { method: 'DELETE' }),
+    payout: async (id, amount, notes) =>
+      request(`/vendors/${id}/payouts`, { method: 'POST', body: { amount, notes } }),
+    getPortalDashboard: async () => request('/vendors/portal/dashboard'),
   },
 
-  // Discounts
   discounts: {
-    getAll: async () => {
-      return request('/discounts');
-    },
-    create: async (discountData) => {
-      return request('/discounts', {
-        method: 'POST',
-        body: discountData,
-      });
-    },
-    update: async (id, discountData) => {
-      return request(`/discounts/${id}`, {
-        method: 'PUT',
-        body: discountData,
-      });
-    },
-    delete: async (id) => {
-      return request(`/discounts/${id}`, {
-        method: 'DELETE',
-      });
-    }
+    getAll: async () => request('/discounts'),
+    create: async (discountData) => request('/discounts', { method: 'POST', body: discountData }),
+    update: async (id, discountData) =>
+      request(`/discounts/${id}`, { method: 'PUT', body: discountData }),
+    delete: async (id) => request(`/discounts/${id}`, { method: 'DELETE' }),
   },
 
-  // CMS Content (Pages & Settings)
-  cms: {
-    getPages: async () => {
-      return request('/content/pages');
-    },
-    createPage: async (pageData) => {
-      return request('/content/pages', {
-        method: 'POST',
-        body: pageData,
-      });
-    },
-    updatePage: async (id, pageData) => {
-      return request(`/content/pages/${id}`, {
-        method: 'PUT',
-        body: pageData,
-      });
-    },
-    deletePage: async (id) => {
-      return request(`/content/pages/${id}`, {
-        method: 'DELETE',
-      });
-    },
-    getSettings: async () => {
-      return request('/content/settings');
-    },
-    updateSetting: async (settingData) => {
-      return request('/content/settings', {
-        method: 'POST',
-        body: settingData,
-      });
-    }
-  },
-
-  // Services (Repairs, Valuations/Sells, Conversations)
   services: {
-    getRepairs: async () => {
-      return request('/services/repairs');
-    },
-    updateRepair: async (id, repairData) => {
-      return request(`/services/repairs/${id}`, {
-        method: 'PUT',
-        body: repairData,
-      });
-    },
-    getSells: async () => {
-      return request('/services/sell');
-    },
-    updateSell: async (id, sellData) => {
-      return request(`/services/sell/${id}`, {
-        method: 'PUT',
-        body: sellData,
-      });
-    },
-    getChats: async () => {
-      return request('/services/chats');
-    },
-    getChatById: async (id) => {
-      return request(`/services/chats/${id}`);
-    },
-    replyToChat: async (id, text) => {
-      return request(`/services/chats/${id}`, {
-        method: 'POST',
-        body: { text },
-      });
-    }
-  }
+    getRepairs: async () => request('/services/repairs'),
+    updateRepair: async (id, repairData) =>
+      request(`/services/repairs/${id}`, { method: 'PUT', body: repairData }),
+    getSells: async () => request('/services/sell'),
+    updateSell: async (id, sellData) =>
+      request(`/services/sell/${id}`, { method: 'PUT', body: sellData }),
+    getChats: async () => request('/services/chats'),
+    getChatById: async (id) => request(`/services/chats/${id}`),
+    replyToChat: async (id, text) =>
+      request(`/services/chats/${id}`, { method: 'POST', body: { text } }),
+  },
 };

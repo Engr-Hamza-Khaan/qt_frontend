@@ -4,6 +4,7 @@ import {
   TrendingUp, Calendar, Filter, DollarSign, PieChart, Briefcase, 
   ArrowUpRight, ArrowDownRight, Award, ShieldAlert
 } from 'lucide-react';
+import { formatCurrency } from '../../utils/formatters';
 
 function FinancialReport() {
   const [report, setReport] = useState(null);
@@ -163,7 +164,7 @@ function FinancialReport() {
         <div className="flex gap-2">
           <button
             type="submit"
-            className="flex-1 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold rounded-xl text-xs transition shadow-md"
+            className="btn-brand flex-1 py-2 font-bold rounded-xl text-xs"
           >
             Filter
           </button>
@@ -194,7 +195,7 @@ function FinancialReport() {
                 <div>
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Gross Revenue</p>
                   <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-                    ${parseFloat(summary.grossRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(summary.grossRevenue || 0)}
                   </h3>
                 </div>
                 <div className="p-2.5 bg-blue-500/10 rounded-2xl text-blue-500">
@@ -214,7 +215,7 @@ function FinancialReport() {
                 <div>
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Cost of Goods (COGS)</p>
                   <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-                    ${parseFloat(summary.costOfGoodsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(summary.costOfGoodsSold || 0)}
                   </h3>
                 </div>
                 <div className="p-2.5 bg-amber-500/10 rounded-2xl text-amber-500">
@@ -234,7 +235,7 @@ function FinancialReport() {
                 <div>
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Net Profit Yield</p>
                   <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-                    ${parseFloat(summary.netProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(summary.netProfit || 0)}
                   </h3>
                 </div>
                 <div className="p-2.5 bg-emerald-500/10 rounded-2xl text-emerald-500">
@@ -292,8 +293,8 @@ function FinancialReport() {
                       </div>
                       
                       <div className="text-right text-xs">
-                        <span className="font-bold text-slate-800 dark:text-white">${parseFloat(p.revenue).toFixed(2)}</span>
-                        <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">${parseFloat(p.profit).toFixed(2)} net</p>
+                        <span className="font-bold text-slate-800 dark:text-white">{formatCurrency(p.revenue)}</span>
+                        <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">{formatCurrency(p.profit)} net</p>
                       </div>
                     </div>
                   ))}
@@ -322,8 +323,8 @@ function FinancialReport() {
                       </div>
                       
                       <div className="text-right text-xs">
-                        <span className="font-bold text-slate-800 dark:text-white">${parseFloat(c.revenue).toFixed(2)}</span>
-                        <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">${parseFloat(c.profit).toFixed(2)} yield</p>
+                        <span className="font-bold text-slate-800 dark:text-white">{formatCurrency(c.revenue)}</span>
+                        <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">{formatCurrency(c.profit)} yield</p>
                       </div>
                     </div>
                   ))}

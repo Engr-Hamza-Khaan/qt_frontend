@@ -1,105 +1,63 @@
-import {
-    PieChart,
-    Pie,
-    Cell,
-    ResponsiveContainer,
-    Tooltip,
-} from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import Card from '../ui/Card';
+import { formatNumber } from '../../utils/formatters';
 
+const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'];
 
-function SalesChart() {
-    const data = [
-        { name: "Electronics", value: 45, color: '#3b82f6' },
-        { name: "Clothing", value: 30, color: '#8b5cf6' },
-        { name: "Books", value: 15, color: '#10b981' },
-        { name: "Other", value: 10, color: '#f59e0b' },
-    ];
+function SalesChart({ inventory = {} }) {
+  const totalStock = parseInt(inventory.totalStock || inventory.dataValues?.totalStock || 0, 10);
+  const totalSkus = parseInt(inventory.totalSkus || inventory.dataValues?.totalSkus || 0, 10);
 
-    return (
-        <div className='bg-white dark:bg-slate-900 backdrop-blur-xl rounded-b-2xl p-6 border
-    border-slate-200/50 dark:border-slate-700/50'>
-            <div className="mb-6">
-                <h3 className='text-lg font-bold text-slate-800 dark:text-white'>
-                    Sales by Category
-                </h3>
-                <p className='text-sm text-slate-500 dark:text-slate-400'>
-                    Production Distribution
-                </p>
+  const data = [
+    { name: 'In Stock', value: totalStock, color: COLORS[0] },
+    { name: 'Active SKUs', value: totalSkus, color: COLORS[1] },
+  ].filter((d) => d.value > 0);
+
+  return (
+    <Card>
+      <Card.Header title="Inventory Snapshot" subtitle="Current stock overview" />
+      <div className="h-48">
+        {data.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-sm text-slate-400">
+            No inventory data
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={45}
+                outerRadius={75}
+                paddingAngle={4}
+                cornerRadius={4}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+      <div className="space-y-3 mt-2">
+        {[
+          { label: 'Total Units in Stock', value: formatNumber(totalStock), color: COLORS[0] },
+          { label: 'Active SKU Count', value: formatNumber(totalSkus), color: COLORS[1] },
+        ].map((item) => (
+          <div key={item.label} className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+              <span className="text-sm text-slate-600 dark:text-slate-400">{item.label}</span>
             </div>
-            <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <defs>
-                            {/* Gradients for each category */}
-                            <linearGradient id="electronicsGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#3b82f6" />
-                                <stop offset="100%" stopColor="#60a5fa" />
-                            </linearGradient>
-
-                            <linearGradient id="clothingGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#8b5cf6" />
-                                <stop offset="100%" stopColor="#a78bfa" />
-                            </linearGradient>
-
-                            <linearGradient id="booksGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#34d399" />
-                            </linearGradient>
-
-                            <linearGradient id="otherGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#f59e0b" />
-                                <stop offset="100%" stopColor="#fbbf24" />
-                            </linearGradient>
-                        </defs>
-
-                        <Pie
-                            data={data}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius={40}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            cornerRadius={5}
-                        >
-                            {data.map((entry, index) => (
-                                <Cell
-                                    key={`cell-${index}`}
-                                    fill={`url(#${entry.name.toLowerCase()}Gradient)`}
-                                />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: "rgba(255, 255, 255, 0.95)",
-                                border: "none",
-                                borderRadius: "12px",
-                                boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-                            }}
-                            formatter={(value, name) => [`${value}%`, name]}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-            </div>
-            <div className="space-y-3">
-                {data.map((item, index) => {
-                    return <div className='flex items-center justify-between'>
-                        <div className='flex items-center space-x-3'>
-                            <div
-                              className='w-3 h-3 rounded-full'
-                              style={{ backgroundColor: item.color}}
-                              />
-                            <span className='text-sm  text-slate-600 dark:text-slate-400'>
-                                {item.name}
-                            </span>
-                        </div>
-                        <div className='text-sm font-semibold text-slate-800 dark:text-white'>
-                            {item.value}%
-                        </div>
-                    </div>
-                })}
-            </div>
-        </div>
-    )
+            <span className="text-sm font-bold text-slate-800 dark:text-white">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
 }
 
-export default SalesChart
+export default SalesChart;

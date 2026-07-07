@@ -1,4 +1,5 @@
 import { MoreHorizontal, TrendingUp, TrendingDown } from 'lucide-react';
+import { formatCurrency } from '../../utils/formatters';
 
 function TableSection({ recentOrders = [], bestSellers = [] }) {
     const getStatusColor = (status) => {
@@ -20,9 +21,9 @@ function TableSection({ recentOrders = [], bestSellers = [] }) {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col gap-6">
             {/* Recent Orders List */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-lg">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-lg">
                 <div className='p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20'>
                     <div className='flex items-center justify-between'>
                         <div>
@@ -70,7 +71,7 @@ function TableSection({ recentOrders = [], bestSellers = [] }) {
                                             </div>
                                         </td>
                                         <td className='p-4 font-bold text-slate-800 dark:text-white'>
-                                            ${parseFloat(order.totalAmount).toFixed(2)}
+                                            {formatCurrency(order.totalAmount)}
                                         </td>
                                         <td className='p-4'>
                                             <span className={`${getStatusColor(order.orderStatus)} font-bold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full`}>
@@ -89,7 +90,7 @@ function TableSection({ recentOrders = [], bestSellers = [] }) {
             </div>
 
             {/* Top Products Leaderboard */}
-            <div className="lg:col-span-1 bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-lg flex flex-col">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-lg flex flex-col">
                 <div className='p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20'>
                     <h3 className='text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider'>
                         Best Sellers
@@ -117,7 +118,7 @@ function TableSection({ recentOrders = [], bestSellers = [] }) {
                                 </div>
                                 <div className='text-right text-xs'>
                                     <p className='font-bold text-slate-800 dark:text-white'>
-                                        ${parseFloat(product.revenue || 0).toFixed(2)}
+                                        {formatCurrency(product.revenue || 0)}
                                     </p>
                                     <div className='flex items-center gap-0.5 text-emerald-500 font-semibold justify-end mt-0.5'>
                                         <TrendingUp className="w-3 h-3" />
