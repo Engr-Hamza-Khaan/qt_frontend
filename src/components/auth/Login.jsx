@@ -117,8 +117,8 @@ function Login() {
             <div className="grid grid-cols-3 gap-2">
               {[
                 ['admin@quickturn.com', 'adminpassword123', 'Super Admin'],
-                ['staff@quickturn.com', 'staffpassword123', 'Staff'],
-                ['sony@supplier.com', 'vendorpassword123', 'Vendor'],
+                // ['staff@quickturn.com', 'staffpassword123', 'Staff'],
+                // ['sony@supplier.com', 'vendorpassword123', 'Vendor'],
               ].map(([em, pw, label]) => (
                 <button
                   key={label}
