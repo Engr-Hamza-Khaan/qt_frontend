@@ -109,7 +109,7 @@ function Login() {
             </button>
           </form>
 
-          <div className="border-t border-slate-800/80 pt-6 space-y-3">
+          {/* <div className="border-t border-slate-800/80 pt-6 space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400 ml-1">
               <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
               <span>Quick Sandbox Login</span>
@@ -130,7 +130,7 @@ function Login() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>  */}
         </div>
       </div>
     </div>
