@@ -582,6 +582,17 @@
       0 16px 40px rgba(0, 0, 0, 0.6);
   }
 
+  /* Invisible hover bridge between navbar button and dropdown */
+  .store-nav-dropdown::before {
+    content: '';
+    position: absolute;
+    top: -1rem;
+    left: 0;
+    right: 0;
+    height: 1rem;
+    background: transparent;
+  }
+
   .store-nav-nested-box {
     @apply absolute top-0 left-[calc(100%+0.5rem)] min-w-[13.5rem] py-2 rounded-2xl z-[220] opacity-0 invisible -translate-x-1 pointer-events-none transition-all duration-200 shadow-2xl;
     background: rgba(8, 14, 38, 0.98);
@@ -593,6 +604,18 @@
       0 16px 40px rgba(0, 0, 0, 0.7);
   }
 
+  /* Invisible hover bridge between dropdown item and nested submenu */
+  .store-nav-nested-box::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -0.75rem;
+    width: 0.75rem;
+    background: transparent;
+  }
+
+  .store-nav-nested-open,
   .group\/nested:hover .store-nav-nested-box,
   .group\/nested:focus-within .store-nav-nested-box {
     @apply opacity-100 visible translate-x-0 pointer-events-auto;
@@ -608,6 +631,7 @@
     box-shadow: 0 0 12px rgba(80, 140, 255, 0.25);
   }
 
+  .store-nav-dropdown-open,
   .store-nav-item-wrap:hover .store-nav-dropdown,
   .store-nav-item-wrap:focus-within .store-nav-dropdown {
     @apply opacity-100 visible translate-y-0 pointer-events-auto;

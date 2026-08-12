@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, Menu, X, Search, LogIn, Heart, Shirt, ChevronRight, ChevronDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import BrandLogo from '../../components/ui/BrandLogo';
@@ -8,7 +8,50 @@ import { STORE_NAV } from '../config/navigation';
 import SearchBar from '../components/SearchBar';
 
 function DesktopNavItem({ item, active, onNavigate }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const timeoutRef = useRef(null);
+  const submenuTimeoutRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+      setOpenSubmenu(null);
+    }, 300);
+  };
+
+  const handleSubMouseEnter = (label) => {
+    if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
+    setOpenSubmenu(label);
+  };
+
+  const handleSubMouseLeave = () => {
+    if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
+    submenuTimeoutRef.current = setTimeout(() => {
+      setOpenSubmenu(null);
+    }, 250);
+  };
+
+  const handleLinkClick = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
+    setIsOpen(false);
+    setOpenSubmenu(null);
+    if (onNavigate) onNavigate();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
+    };
+  }, []);
 
   if (item.isCenterLogo) {
     return (
@@ -16,7 +59,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
         to={item.to || '/'}
         className="store-nav-center-item group shrink-0 mx-0.5 sm:mx-1 focus:outline-none"
         aria-label="Quick Turn Home"
-        onClick={onNavigate}
+        onClick={handleLinkClick}
       >
         <div className="store-nav-center-emblem relative flex items-center justify-center p-0.5 sm:p-1">
           <img
@@ -66,9 +109,13 @@ function DesktopNavItem({ item, active, onNavigate }) {
 
   if (item.dropdown) {
     return (
-      <div className="store-nav-item-wrap relative shrink-0">
+      <div
+        className="store-nav-item-wrap relative shrink-0"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         {item.to ? (
-          <Link to={item.to} className="block group focus:outline-none" aria-label={item.label} onClick={onNavigate}>
+          <Link to={item.to} className="block group focus:outline-none" aria-label={item.label} onClick={handleLinkClick}>
             {iconElement}
           </Link>
         ) : (
@@ -76,13 +123,17 @@ function DesktopNavItem({ item, active, onNavigate }) {
             type="button"
             className="block group focus:outline-none"
             aria-haspopup="true"
-            aria-expanded="false"
+            aria-expanded={isOpen}
             aria-label={item.label}
+            onClick={() => setIsOpen((prev) => !prev)}
           >
             {iconElement}
           </button>
         )}
-        <div className="store-nav-dropdown" role="menu">
+        <div
+          className={`store-nav-dropdown ${isOpen ? 'store-nav-dropdown-open' : ''}`}
+          role="menu"
+        >
           {item.dropdown.map((sub) => {
             if (sub.children && sub.children.length > 0) {
               const isSubOpen = openSubmenu === sub.label;
@@ -90,15 +141,15 @@ function DesktopNavItem({ item, active, onNavigate }) {
                 <div
                   key={sub.label}
                   className="relative group/nested"
-                  onMouseEnter={() => setOpenSubmenu(sub.label)}
-                  onMouseLeave={() => setOpenSubmenu(null)}
+                  onMouseEnter={() => handleSubMouseEnter(sub.label)}
+                  onMouseLeave={handleSubMouseLeave}
                 >
                   <div className="flex items-center justify-between store-nav-dropdown-link cursor-pointer">
                     <Link
                       to={sub.to}
                       role="menuitem"
                       className="flex-1 text-inherit"
-                      onClick={onNavigate}
+                      onClick={handleLinkClick}
                     >
                       {sub.label}
                     </Link>
@@ -117,7 +168,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
 
                   <div
                     className={`store-nav-nested-box ${
-                      isSubOpen ? 'opacity-100 visible translate-x-0 pointer-events-auto' : ''
+                      isSubOpen ? 'store-nav-nested-open opacity-100 visible translate-x-0 pointer-events-auto' : ''
                     }`}
                     role="menu"
                   >
@@ -130,10 +181,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
                         to={child.to}
                         role="menuitem"
                         className="store-nav-dropdown-link"
-                        onClick={() => {
-                          setOpenSubmenu(null);
-                          onNavigate();
-                        }}
+                        onClick={handleLinkClick}
                       >
                         {child.label}
                       </Link>
@@ -149,7 +197,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
                 to={sub.to}
                 role="menuitem"
                 className="store-nav-dropdown-link"
-                onClick={onNavigate}
+                onClick={handleLinkClick}
               >
                 {sub.label}
               </Link>
@@ -161,7 +209,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
   }
 
   return (
-    <Link to={item.to} className="shrink-0 block group focus:outline-none" aria-label={item.label} onClick={onNavigate}>
+    <Link to={item.to} className="shrink-0 block group focus:outline-none" aria-label={item.label} onClick={handleLinkClick}>
       {iconElement}
     </Link>
   );
