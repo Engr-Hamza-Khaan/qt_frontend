@@ -1,6 +1,16 @@
-import { Link } from 'react-router-dom';
+import { openTermsModal } from './TermsModal';
 
 function TermsAgreement({ checked, onChange }) {
+  const handleOpenTerms = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openTermsModal({
+      onAccept: () => {
+        onChange?.(true);
+      },
+    });
+  };
+
   return (
     <label className="flex items-start gap-2.5 cursor-pointer text-sm text-gray-300">
       <input
@@ -12,15 +22,13 @@ function TermsAgreement({ checked, onChange }) {
       />
       <span>
         I have read and agree to the{' '}
-        <Link
-          to="/page/terms-and-conditions"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-neon-purple hover:underline"
-          onClick={(e) => e.stopPropagation()}
+        <button
+          type="button"
+          onClick={handleOpenTerms}
+          className="text-neon-purple hover:underline hover:text-purple-300 transition font-medium inline-block text-left"
         >
           Terms &amp; Conditions
-        </Link>
+        </button>
         .
       </span>
     </label>

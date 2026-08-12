@@ -35,9 +35,25 @@ function CartPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-white text-sm sm:text-base line-clamp-2">{item.title}</h3>
-                <p className="text-xs sm:text-sm store-muted mt-0.5 truncate">
-                  {[item.platform, item.storage, item.color].filter(Boolean).join(' · ')}
-                </p>
+                <div className="flex flex-wrap gap-1.5 items-center mt-1 text-xs store-muted">
+                  {[item.platform, item.storage, item.color, item.edition].filter(Boolean).map((spec) => (
+                    <span key={spec} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
+                      {spec}
+                    </span>
+                  ))}
+                  {item.condition && (
+                    <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                      item.condition === 'New' ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                    }`}>
+                      {item.condition}
+                    </span>
+                  )}
+                  {item.bundle && (
+                    <span className="px-2 py-0.5 rounded-md font-medium text-[10px] text-purple-300 bg-purple-500/10 border border-purple-500/20">
+                      📦 {item.bundle}
+                    </span>
+                  )}
+                </div>
                 <p className="text-base sm:text-lg font-bold text-neon-purple mt-1.5 sm:mt-2">{formatCurrency(item.price)}</p>
               </div>
             </div>

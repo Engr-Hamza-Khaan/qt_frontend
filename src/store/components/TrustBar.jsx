@@ -18,7 +18,7 @@ function TrustBar() {
               className="flex flex-col items-center text-center gap-2 sm:flex-row sm:items-center sm:text-left sm:gap-3 min-w-0"
             >
               <div className="store-trust-icon w-10 h-10 sm:w-10 sm:h-10 shrink-0">
-                <Icon className="w-5 h-5 text-neon-purple" />
+                <Icon className="w-5 h-5 text-blue-400" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm font-semibold text-white">{title}</p>

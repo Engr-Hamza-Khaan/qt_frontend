@@ -28,9 +28,25 @@ async function request(endpoint, options = {}) {
     }
   }
 
-  const responseData = await response.json();
+  let responseData;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      responseData = await response.json();
+    } catch {
+      responseData = null;
+    }
+  } else {
+    const text = await response.text();
+    try {
+      responseData = JSON.parse(text);
+    } catch {
+      responseData = { message: text ? text.slice(0, 200) : response.statusText };
+    }
+  }
+
   if (!response.ok) {
-    throw new Error(responseData.message || 'Something went wrong');
+    throw new Error(responseData?.message || `Request failed with status ${response.status}`);
   }
 
   return responseData;
@@ -189,5 +205,21 @@ export const api = {
     getChatById: async (id) => request(`/services/chats/${id}`),
     replyToChat: async (id, text) =>
       request(`/services/chats/${id}`, { method: 'POST', body: { text } }),
+  },
+
+  settings: {
+    getNotificationBar: async () => request('/settings/notification-bar'),
+    updateNotificationBar: async (data) =>
+      request('/settings/notification-bar', { method: 'PUT', body: data }),
+    getTermsAndConditions: async () => request('/settings/terms-and-conditions'),
+    updateTermsAndConditions: async (data) =>
+      request('/settings/terms-and-conditions', { method: 'PUT', body: data }),
+  },
+
+  search: {
+    getAnalytics: async () => request('/search/analytics'),
+    addOrPinTerm: async (termData) => request('/search/terms', { method: 'POST', body: termData }),
+    togglePinTerm: async (id) => request(`/search/terms/${id}/pin`, { method: 'PUT' }),
+    deleteTerm: async (id) => request(`/search/terms/${id}`, { method: 'DELETE' }),
   },
 };

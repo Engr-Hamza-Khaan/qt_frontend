@@ -45,7 +45,7 @@ function HeroCarousel({ hero = {}, slides = DEFAULT_SLIDES }) {
 
   return (
     <section className="relative bg-gray-900 overflow-hidden">
-      <div className={`absolute inset-0 bg-gradient-to-r ${slide.bg} transition-all duration-700`} />
+      <div className={`absolute inset-0 bg-gradient-to-r ${slide.bg} transition-all duration-300`} />
       <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiPjxwYXRoIGQ9Ik0wIDQwaDQwVjB6Ii8+PC9nPjwvc3ZnPg==')]" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-14 md:py-20">

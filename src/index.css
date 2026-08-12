@@ -102,14 +102,14 @@
 
   .store-card {
     @apply rounded-xl overflow-hidden transition-all duration-300;
-    background: rgba(15, 20, 25, 0.8);
-    border: 1px solid rgba(176, 38, 255, 0.22);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+    background: rgba(8, 16, 50, 0.85);
+    border: 1px solid rgba(75, 125, 255, 0.22);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
   }
 
   .store-card:hover {
-    border-color: rgba(176, 38, 255, 0.45);
-    box-shadow: 0 0 28px rgba(176, 38, 255, 0.22), 0 8px 32px rgba(0, 0, 0, 0.45);
+    border-color: rgba(96, 165, 250, 0.5);
+    box-shadow: 0 0 28px rgba(59, 130, 246, 0.25), 0 8px 32px rgba(0, 0, 0, 0.55);
     transform: translateY(-2px);
   }
 
@@ -117,26 +117,26 @@
     @apply relative overflow-hidden transition-all duration-300;
     aspect-ratio: 3 / 4;
     border-radius: 28px;
-    border: 1px solid rgba(176, 38, 255, 0.22);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-    background: rgba(8, 5, 15, 0.6);
+    border: 1px solid rgba(75, 125, 255, 0.24);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    background: rgba(6, 12, 40, 0.75);
   }
 
   .store-product-card::after {
     content: '';
     @apply absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300;
     border-radius: inherit;
-    box-shadow: inset 0 0 48px rgba(176, 38, 255, 0.28);
+    box-shadow: inset 0 0 48px rgba(59, 130, 246, 0.25);
     z-index: 15;
   }
 
   .store-product-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(176, 38, 255, 0.55);
+    border-color: rgba(96, 165, 250, 0.6);
     box-shadow:
-      0 0 28px rgba(176, 38, 255, 0.38),
-      0 0 56px rgba(176, 38, 255, 0.18),
-      0 18px 44px rgba(0, 0, 0, 0.5);
+      0 0 28px rgba(59, 130, 246, 0.4),
+      0 0 56px rgba(37, 99, 235, 0.2),
+      0 18px 44px rgba(0, 0, 0, 0.55);
   }
 
   .store-product-card:hover::after {
@@ -158,7 +158,7 @@
   }
 
   .store-product-card__sale-badge {
-    @apply absolute top-3 left-3 z-10 px-2.5 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full uppercase;
+    @apply absolute top-3 left-3 z-10 px-2.5 py-1 bg-red-600 text-white text-[10px] font-bold rounded-full uppercase shadow-md;
   }
 
   .store-product-card__platforms {
@@ -170,16 +170,16 @@
   }
 
   .store-product-card__platform-badge {
-    @apply px-3 py-1 bg-white text-black text-xs font-bold rounded-full text-center min-w-[3rem] shadow-sm;
+    @apply px-3 py-1 bg-white text-[#050c38] text-xs font-bold rounded-full text-center min-w-[3rem] shadow-sm;
   }
 
   .store-product-card__overlay {
-    @apply absolute inset-x-0 bottom-0 z-10 flex flex-col items-center justify-end pb-5 pt-20 px-4 text-center opacity-0 translate-y-2 transition-all duration-300;
+    @apply absolute inset-x-0 bottom-0 z-20 flex flex-col items-center justify-end pb-3.5 pt-16 px-3 text-center opacity-0 translate-y-2 transition-all duration-300;
     background: linear-gradient(
       to top,
-      rgba(76, 12, 140, 0.96) 0%,
-      rgba(124, 22, 201, 0.88) 38%,
-      rgba(176, 38, 255, 0.22) 68%,
+      rgba(4, 8, 30, 0.98) 0%,
+      rgba(10, 24, 75, 0.92) 50%,
+      rgba(59, 130, 246, 0.2) 80%,
       transparent 100%
     );
   }
@@ -195,30 +195,31 @@
     }
   }
 
-   .store-theme {
-    @apply min-h-screen text-gray-300 overflow-x-hidden;
-    background-color: #08050f;
+  .store-theme {
+    @apply min-h-screen text-gray-200 overflow-x-hidden;
+    background-color: #050c38;
+    background-image: radial-gradient(circle at 50% 0%, #0d1a58 0%, #050c38 60%, #03071e 100%);
   }
 
   .store-glass-panel {
-    background: rgba(12, 8, 22, 0.88);
+    background: rgba(8, 16, 50, 0.9);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(176, 38, 255, 0.22);
+    border: 1px solid rgba(75, 125, 255, 0.28);
     border-radius: 1rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   }
 
   .store-input {
-    @apply w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-gray-500 transition-all;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    @apply w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-gray-400 transition-all;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(75, 125, 255, 0.25);
   }
 
   .store-input:focus {
     outline: none;
-    border-color: rgba(176, 38, 255, 0.5);
-    box-shadow: 0 0 0 3px rgba(176, 38, 255, 0.15);
+    border-color: rgba(96, 165, 250, 0.6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   }
 
   select.store-input {
@@ -227,8 +228,8 @@
     -moz-appearance: none;
     color-scheme: dark;
     cursor: pointer;
-    background-color: rgba(12, 8, 22, 0.95);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b026ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-color: rgba(8, 16, 50, 0.96);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 1rem center;
     background-size: 1rem;
@@ -236,24 +237,24 @@
   }
 
   select.store-input option {
-    background-color: #0c0816;
+    background-color: #050c38;
     color: #ffffff;
   }
 
   select.store-input option:checked {
-    background-color: rgba(124, 22, 201, 0.45);
+    background-color: rgba(37, 99, 235, 0.45);
     color: #ffffff;
   }
 
   .store-btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-display font-bold uppercase tracking-wider text-white rounded-full transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed;
-    background: linear-gradient(to right, #7c16c9, #b026ff);
-    box-shadow: 0 0 30px rgba(176, 38, 255, 0.35);
+    background: linear-gradient(to right, #1d4ed8, #2563eb);
+    box-shadow: 0 0 25px rgba(37, 99, 235, 0.35);
   }
 
   .store-btn-primary:hover:not(:disabled) {
-    background: linear-gradient(to right, #b026ff, #d946ef);
-    box-shadow: 0 0 40px rgba(176, 38, 255, 0.5);
+    background: linear-gradient(to right, #2563eb, #3b82f6);
+    box-shadow: 0 0 35px rgba(59, 130, 246, 0.55);
   }
 
   .store-btn-primary--block {
@@ -261,7 +262,7 @@
   }
 
   .store-link {
-    @apply text-neon-purple hover:text-neon-purple-light transition font-semibold;
+    @apply text-blue-400 hover:text-blue-300 transition font-semibold;
   }
 
   .store-page-title {
@@ -277,8 +278,22 @@
   }
 
   .store-filter-btn--active {
-    @apply text-neon-purple font-medium;
-    background: rgba(176, 38, 255, 0.15);
+    @apply text-blue-400 font-medium;
+    background: rgba(59, 130, 246, 0.18);
+  }
+
+  .hero-hollow-stroke {
+    color: transparent;
+    -webkit-text-stroke: 2px rgba(255, 255, 255, 0.95);
+    text-stroke: 2px rgba(255, 255, 255, 0.95);
+    text-shadow: 0 0 24px rgba(75, 125, 255, 0.35);
+  }
+
+  @media (min-width: 768px) {
+    .hero-hollow-stroke {
+      -webkit-text-stroke: 2.5px rgba(255, 255, 255, 0.98);
+      text-stroke: 2.5px rgba(255, 255, 255, 0.98);
+    }
   }
 
   .store-filter-btn--default {
@@ -324,54 +339,104 @@
     @apply rotate-180;
   }
 
+  /* Dual Range Slider */
+  .store-range-slider {
+    position: relative;
+    width: 100%;
+    height: 24px;
+    display: flex;
+    align-items: center;
+  }
+
+  .store-range-slider input[type='range'] {
+    position: absolute;
+    width: 100%;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    z-index: 5;
+    margin: 0;
+  }
+
+  .store-range-slider input[type='range']::-webkit-slider-thumb {
+    pointer-events: auto;
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #b026ff;
+    box-shadow: 0 0 10px rgba(176, 38, 255, 0.7);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .store-range-slider input[type='range']::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 16px rgba(176, 38, 255, 1);
+  }
+
+  .store-range-slider input[type='range']::-moz-range-thumb {
+    pointer-events: auto;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #b026ff;
+    box-shadow: 0 0 10px rgba(176, 38, 255, 0.7);
+    cursor: pointer;
+  }
+
   .store-category-card {
     @apply rounded-xl p-5 text-center transition-all duration-200;
-    background: rgba(15, 20, 25, 0.75);
-    border: 1px solid rgba(176, 38, 255, 0.2);
+    background: rgba(8, 16, 50, 0.8);
+    border: 1px solid rgba(75, 125, 255, 0.22);
   }
 
   .store-category-card:hover {
-    border-color: rgba(176, 38, 255, 0.45);
-    box-shadow: 0 0 24px rgba(176, 38, 255, 0.2);
+    border-color: rgba(96, 165, 250, 0.55);
+    box-shadow: 0 0 24px rgba(59, 130, 246, 0.28);
   }
 
   .store-brand-chip {
-    @apply px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-300 transition;
-    background: rgba(15, 20, 25, 0.75);
-    border: 1px solid rgba(176, 38, 255, 0.2);
+    @apply px-5 py-2.5 rounded-lg text-sm font-semibold text-gray-200 transition;
+    background: rgba(8, 16, 50, 0.8);
+    border: 1px solid rgba(75, 125, 255, 0.22);
   }
 
   .store-brand-chip:hover {
-    @apply text-neon-purple;
-    border-color: rgba(176, 38, 255, 0.45);
-    box-shadow: 0 0 16px rgba(176, 38, 255, 0.2);
+    @apply text-blue-400;
+    border-color: rgba(96, 165, 250, 0.55);
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
   }
 
   .store-cta-strip {
     background: linear-gradient(
       135deg,
-      rgba(124, 22, 201, 0.35) 0%,
-      rgba(176, 38, 255, 0.2) 50%,
-      rgba(124, 22, 201, 0.35) 100%
+      rgba(29, 78, 216, 0.3) 0%,
+      rgba(59, 130, 246, 0.18) 50%,
+      rgba(29, 78, 216, 0.3) 100%
     );
-    border-top: 1px solid rgba(176, 38, 255, 0.3);
-    border-bottom: 1px solid rgba(176, 38, 255, 0.3);
+    border-top: 1px solid rgba(75, 125, 255, 0.25);
+    border-bottom: 1px solid rgba(75, 125, 255, 0.25);
   }
 
   .store-promo-banner {
     @apply rounded-2xl p-8 md:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6;
     background: linear-gradient(
       120deg,
-      rgba(124, 22, 201, 0.55) 0%,
-      rgba(176, 38, 255, 0.32) 25%,
-      rgba(8, 5, 15, 0.98) 50%,
-      rgba(176, 38, 255, 0.32) 75%,
-      rgba(124, 22, 201, 0.55) 100%
+      rgba(29, 78, 216, 0.55) 0%,
+      rgba(59, 130, 246, 0.32) 25%,
+      rgba(5, 12, 56, 0.98) 50%,
+      rgba(59, 130, 246, 0.32) 75%,
+      rgba(29, 78, 216, 0.55) 100%
     );
     background-size: 200% 100%;
     animation: moveGradient 3s linear infinite;
-    border: 1px solid rgba(176, 38, 255, 0.45);
-    box-shadow: 0 0 40px rgba(176, 38, 255, 0.22);
+    border: 1px solid rgba(96, 165, 250, 0.4);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.25);
   }
 
   @keyframes moveGradient {
@@ -391,72 +456,72 @@
 
   .store-badge-featured {
     @apply px-2 py-0.5 text-white text-[10px] font-bold rounded uppercase;
-    background: linear-gradient(to right, #7c16c9, #b026ff);
+    background: linear-gradient(to right, #1d4ed8, #2563eb);
   }
 
   .store-trust-icon {
     @apply w-10 h-10 rounded-full flex items-center justify-center shrink-0;
-    background: rgba(176, 38, 255, 0.15);
-    border: 1px solid rgba(176, 38, 255, 0.3);
+    background: rgba(59, 130, 246, 0.16);
+    border: 1px solid rgba(75, 125, 255, 0.35);
   }
 
   .store-section-alt {
     background: rgba(255, 255, 255, 0.02);
-    border-top: 1px solid rgba(176, 38, 255, 0.12);
-    border-bottom: 1px solid rgba(176, 38, 255, 0.12);
+    border-top: 1px solid rgba(75, 125, 255, 0.15);
+    border-bottom: 1px solid rgba(75, 125, 255, 0.15);
   }
 
   .store-navbar {
-    @apply rounded-full overflow-visible backdrop-blur-xl;
+    @apply rounded-full overflow-visible backdrop-blur-2xl;
     background: linear-gradient(
-      135deg,
-      rgba(124, 22, 201, 0.28) 0%,
-      rgba(15, 20, 25, 0.92) 35%,
-      rgba(15, 20, 25, 0.92) 65%,
-      rgba(124, 22, 201, 0.28) 100%
+      180deg,
+      #09133b 0%,
+      #050b28 50%,
+      #03071c 100%
     );
-    border: 1px solid rgba(176, 38, 255, 0.45);
+    border: 1.5px solid rgba(75, 125, 255, 0.38);
     box-shadow:
-      0 0 24px rgba(176, 38, 255, 0.35),
-      0 0 48px rgba(176, 38, 255, 0.15),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      inset 0 0 20px rgba(176, 38, 255, 0.08);
+      inset 0 2px 5px rgba(255, 255, 255, 0.16),
+      inset 0 -3px 8px rgba(0, 0, 0, 0.85),
+      0 8px 32px rgba(0, 0, 0, 0.65),
+      0 0 25px rgba(30, 80, 220, 0.22);
   }
 
   .store-nav-items {
-    @apply flex items-center gap-1 overflow-visible;
+    @apply flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 lg:gap-2.5 px-2 sm:px-3.5 py-1 sm:py-1.5 overflow-visible;
   }
 
   .store-nav-label {
-    @apply text-[10px] font-medium leading-tight text-center whitespace-nowrap text-white/90;
+    @apply text-[10px] sm:text-[11px] font-medium leading-tight text-center whitespace-nowrap text-white/90 group-hover:text-white transition-colors tracking-wide;
   }
 
-  .store-nav-icon-btn {
-    @apply flex flex-col items-center justify-center gap-0.5 px-2.5 py-1.5 rounded-xl transition-all duration-200;
+  .store-nav-item-inner {
+    @apply flex flex-col items-center justify-center rounded-2xl transition-all duration-200 cursor-pointer;
   }
 
-  .store-nav-icon-btn--default {
-    @apply text-gray-300;
+  .store-nav-item-inner--default:hover {
+    background: radial-gradient(circle at center, rgba(65, 120, 255, 0.22) 0%, transparent 75%);
   }
 
-  .store-nav-icon-btn--default:hover {
-    @apply text-white;
-    background: rgba(176, 38, 255, 0.12);
-    box-shadow: 0 0 16px rgba(176, 38, 255, 0.25);
+  .store-nav-item-inner--active {
+    background: radial-gradient(circle at center, rgba(90, 150, 255, 0.32) 0%, transparent 80%);
   }
 
-  .store-nav-icon-btn--active {
-    @apply text-neon-purple border border-neon-purple/50;
-    background: rgba(176, 38, 255, 0.18);
-    box-shadow:
-      0 0 18px rgba(176, 38, 255, 0.45),
-      inset 0 0 12px rgba(176, 38, 255, 0.12);
+  .store-nav-item-inner--active .store-nav-label {
+    @apply text-white font-semibold;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.75), 0 0 16px rgba(80, 140, 255, 0.6);
   }
 
-  .store-nav-icon-btn--active .store-nav-label {
-    @apply text-neon-purple;
-    text-shadow: 0 0 10px rgba(176, 38, 255, 0.6);
+  .store-nav-center-item {
+    @apply flex items-center justify-center transition-all duration-200;
+  }
+
+  .store-nav-center-emblem {
+    @apply relative transition-transform duration-300;
+  }
+
+  .store-nav-center-emblem:hover {
+    filter: drop-shadow(0 0 16px rgba(100, 180, 255, 0.95));
   }
 
   .hero-tag-box {
@@ -507,22 +572,40 @@
   }
 
   .store-nav-dropdown {
-    @apply absolute top-[calc(100%+0.75rem)] left-1/2 -translate-x-1/2 min-w-[11rem] py-2 rounded-2xl z-[200] opacity-0 invisible translate-y-1 pointer-events-none transition-all duration-200;
-    background: rgba(12, 8, 22, 0.95);
+    @apply absolute top-[calc(100%+0.75rem)] left-1/2 -translate-x-1/2 min-w-[13rem] py-2 rounded-2xl z-[200] opacity-0 invisible translate-y-1 pointer-events-none transition-all duration-200 shadow-2xl;
+    background: rgba(8, 14, 38, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(176, 38, 255, 0.35);
+    border: 1px solid rgba(80, 130, 255, 0.35);
     box-shadow:
-      0 0 24px rgba(176, 38, 255, 0.3),
-      0 16px 40px rgba(0, 0, 0, 0.5);
+      0 0 24px rgba(30, 80, 220, 0.3),
+      0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .store-nav-nested-box {
+    @apply absolute top-0 left-[calc(100%+0.5rem)] min-w-[13.5rem] py-2 rounded-2xl z-[220] opacity-0 invisible -translate-x-1 pointer-events-none transition-all duration-200 shadow-2xl;
+    background: rgba(8, 14, 38, 0.98);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(80, 130, 255, 0.4);
+    box-shadow:
+      0 0 28px rgba(30, 80, 220, 0.35),
+      0 16px 40px rgba(0, 0, 0, 0.7);
+  }
+
+  .group\/nested:hover .store-nav-nested-box,
+  .group\/nested:focus-within .store-nav-nested-box {
+    @apply opacity-100 visible translate-x-0 pointer-events-auto;
   }
 
   .store-nav-dropdown-link {
-    @apply block px-4 py-2.5 text-sm text-gray-300 hover:text-neon-purple transition whitespace-nowrap;
+    @apply block px-4 py-2 text-xs sm:text-sm font-medium text-gray-200 hover:text-white transition whitespace-nowrap rounded-xl mx-1;
   }
 
   .store-nav-dropdown-link:hover {
-    background: rgba(176, 38, 255, 0.1);
+    background: rgba(80, 140, 255, 0.18);
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(80, 140, 255, 0.25);
   }
 
   .store-nav-item-wrap:hover .store-nav-dropdown,

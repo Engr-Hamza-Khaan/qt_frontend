@@ -5,9 +5,11 @@ import { getMediaUrl, getProductImage } from '../../store/utils';
 import { formatCurrency } from '../../utils/formatters';
 import { isStaffOrAbove } from '../../utils/roles';
 import ModalOverlay from '../ui/ModalOverlay';
+import SearchAnalyticsModal from './SearchAnalyticsModal';
 import { 
   Package, Plus, Search, Tag, Eye, Edit2, Copy, Trash2, 
-  Layers, Layers2, Sparkles, Check, X, AlertCircle, Upload, Image as ImageIcon
+  Layers, Layers2, Sparkles, Check, X, AlertCircle, Upload, Image as ImageIcon,
+  TrendingUp, KeyRound, Lightbulb
 } from 'lucide-react';
 
 function ProductList() {
@@ -28,6 +30,7 @@ function ProductList() {
   // Modals state
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   
   // Variation Manager Modal State
@@ -43,6 +46,8 @@ function ProductList() {
   const [platform, setPlatform] = useState('PS5');
   const [status, setStatus] = useState('Published');
   const [tags, setTags] = useState('');
+  const [aliases, setAliases] = useState('');
+  const [keywords, setKeywords] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
@@ -56,14 +61,18 @@ function ProductList() {
   const [catDesc, setCatDesc] = useState('');
 
   // Form States - Variation
+  const [editingVarId, setEditingVarId] = useState(null);
   const [varSku, setVarSku] = useState('');
+  const [varPlatform, setVarPlatform] = useState('PS5');
+  const [varCondition, setVarCondition] = useState('New');
   const [varColor, setVarColor] = useState('');
   const [varStorage, setVarStorage] = useState('');
   const [varEdition, setVarEdition] = useState('');
+  const [varBundle, setVarBundle] = useState('');
   const [varPrice, setVarPrice] = useState('');
   const [varCostPrice, setVarCostPrice] = useState('');
   const [varStock, setVarStock] = useState('');
-  const [varThreshold, setVarThreshold] = useState('');
+  const [varThreshold, setVarThreshold] = useState('5');
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [pendingImages, setPendingImages] = useState([]);
   const [formMedia, setFormMedia] = useState([]);
@@ -96,8 +105,13 @@ function ProductList() {
 
   // Filtered Products
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (p.modelNumber && p.modelNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = !term ||
+                          p.title.toLowerCase().includes(term) || 
+                          (p.modelNumber && p.modelNumber.toLowerCase().includes(term)) ||
+                          (Array.isArray(p.aliases) && p.aliases.some(a => a.toLowerCase().includes(term))) ||
+                          (Array.isArray(p.keywords) && p.keywords.some(k => k.toLowerCase().includes(term))) ||
+                          (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(term)));
     const matchesCategory = selectedCategory ? String(p.categoryId) === String(selectedCategory) : true;
     const matchesCondition = selectedCondition ? p.condition === selectedCondition : true;
     return matchesSearch && matchesCategory && matchesCondition;
@@ -129,6 +143,8 @@ function ProductList() {
     setPlatform('PS5');
     setStatus('Published');
     setTags('');
+    setAliases('');
+    setKeywords('');
     setPrice('');
     setStock('');
     setIsFeatured(false);
@@ -150,6 +166,8 @@ function ProductList() {
     setPlatform(product.attributes?.platform || 'PS5');
     setStatus(product.status);
     setTags(product.tags ? product.tags.join(', ') : '');
+    setAliases(product.aliases ? product.aliases.join(', ') : '');
+    setKeywords(product.keywords ? product.keywords.join(', ') : '');
     setPrice(product.variations?.[0]?.price?.toString() || '');
     setStock(product.variations?.[0]?.stockQuantity?.toString() || '');
     setIsFeatured(!!product.isFeatured);
@@ -164,6 +182,9 @@ function ProductList() {
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean);
+    const aliasArray = aliases.split(',').map(a => a.trim()).filter(Boolean);
+    const keywordArray = keywords.split(',').map(k => k.trim()).filter(Boolean);
+
     const payload = {
       title,
       description,
@@ -172,6 +193,8 @@ function ProductList() {
       categoryId: categoryId || null,
       status,
       tags: tagArray,
+      aliases: aliasArray,
+      keywords: keywordArray,
       attributes: { platform },
       isFeatured,
       isBestSeller,
@@ -262,6 +285,21 @@ function ProductList() {
     }
   };
 
+  const resetVariationForm = (prod) => {
+    setEditingVarId(null);
+    setVarSku('');
+    setVarPlatform(prod?.attributes?.platform || 'PS5');
+    setVarCondition(prod?.condition || 'New');
+    setVarColor('');
+    setVarStorage('');
+    setVarEdition('');
+    setVarBundle('');
+    setVarPrice('');
+    setVarCostPrice('');
+    setVarStock('');
+    setVarThreshold('5');
+  };
+
   // Variation Handlers
   const handleManageVariations = async (product) => {
     try {
@@ -269,56 +307,68 @@ function ProductList() {
       if (!res.success) return;
 
       setSelectedProductForVariations(res.data);
-      setVarSku('');
-      setVarColor('');
-      setVarStorage('');
-      setVarEdition('');
-      setVarPrice('');
-      setVarCostPrice('');
-      setVarStock('');
-      setVarThreshold('');
+      resetVariationForm(res.data);
       setShowVariationModal(true);
     } catch (err) {
       alert(err.message || 'Error loading product details');
     }
   };
 
-  const handleAddVariation = async (e) => {
+  const handleStartEditVariation = (v) => {
+    setEditingVarId(v.id);
+    setVarSku(v.sku || '');
+    setVarPlatform(v.platform || selectedProductForVariations?.attributes?.platform || 'PS5');
+    setVarCondition(v.condition || selectedProductForVariations?.condition || 'New');
+    setVarColor(v.color || '');
+    setVarStorage(v.storage || '');
+    setVarEdition(v.edition || '');
+    setVarBundle(v.bundle || '');
+    setVarPrice(v.price !== undefined ? v.price.toString() : '');
+    setVarCostPrice(v.costPrice !== undefined ? v.costPrice.toString() : '');
+    setVarStock(v.stockQuantity !== undefined ? v.stockQuantity.toString() : '');
+    setVarThreshold(v.lowStockThreshold !== undefined ? v.lowStockThreshold.toString() : '5');
+  };
+
+  const handleCancelEditVariation = () => {
+    resetVariationForm(selectedProductForVariations);
+  };
+
+  const handleSaveVariation = async (e) => {
     e.preventDefault();
     const payload = {
-      sku: varSku,
+      sku: varSku || undefined,
+      platform: varPlatform || selectedProductForVariations.attributes?.platform || null,
+      condition: varCondition || 'New',
       color: varColor || null,
       storage: varStorage || null,
       edition: varEdition || null,
-      platform: selectedProductForVariations.attributes?.platform || 'Hardware',
+      bundle: varBundle || null,
       price: parseFloat(varPrice),
-      costPrice: varCostPrice ? parseFloat(varCostPrice) : null,
-      stockQuantity: parseInt(varStock),
-      lowStockThreshold: varThreshold ? parseInt(varThreshold) : 5
+      costPrice: varCostPrice ? parseFloat(varCostPrice) : 0,
+      stockQuantity: parseInt(varStock, 10) || 0,
+      lowStockThreshold: varThreshold ? parseInt(varThreshold, 10) : 5
     };
 
     try {
-      const res = await api.products.addVariation(selectedProductForVariations.id, payload);
+      let res;
+      if (editingVarId) {
+        res = await api.products.updateVariation(editingVarId, payload);
+      } else {
+        res = await api.products.addVariation(selectedProductForVariations.id, payload);
+      }
+
       if (res.success) {
         // Refresh selected product variations
         const updatedProdRes = await api.products.getById(selectedProductForVariations.id);
         if (updatedProdRes.success) {
           setSelectedProductForVariations(updatedProdRes.data);
-          // Refresh main table too
+          syncProductInList(updatedProdRes.data);
           fetchData();
-          // Reset form
-          setVarSku('');
-          setVarColor('');
-          setVarStorage('');
-          setVarEdition('');
-          setVarPrice('');
-          setVarCostPrice('');
-          setVarStock('');
-          setVarThreshold('');
+          resetVariationForm(updatedProdRes.data);
         }
       }
     } catch (err) {
-      alert(err.message || 'Error adding variation');
+      alert(err.message || 'Error saving variation');
     }
   };
 
@@ -330,6 +380,7 @@ function ProductList() {
         const updatedProdRes = await api.products.getById(selectedProductForVariations.id);
         if (updatedProdRes.success) {
           setSelectedProductForVariations(updatedProdRes.data);
+          syncProductInList(updatedProdRes.data);
           fetchData();
         }
       }
@@ -445,21 +496,23 @@ function ProductList() {
           </p>
         </div>
         
-        <div className="flex gap-3">
-          {/* <button 
-            onClick={() => setShowCategoryModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 rounded-xl transition-all font-medium text-sm border border-slate-200/50 dark:border-slate-700/50"
-          >
-            <Layers className="w-4 h-4" />
-            New Category
-          </button> */}
-          
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button 
+            type="button"
+            onClick={() => setShowAnalyticsModal(true)}
+            className="flex items-center gap-2 px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-xl transition-all font-semibold text-xs sm:text-sm border border-purple-200 dark:border-purple-800/60"
+          >
+            <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <span>Search Analytics</span>
+          </button>
+
+          <button 
+            type="button"
             onClick={handleOpenCreateModal}
-            className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm active:scale-[0.98]"
+            className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
-            Add Product
+            <span>Add Product</span>
           </button>
         </div>
       </div>
@@ -549,7 +602,15 @@ function ProductList() {
                         </div>
                         <div>
                           <h4 className="font-bold text-slate-800 dark:text-white text-sm line-clamp-1">{p.title}</h4>
-                          <p className="text-xs text-slate-400 mt-0.5">Model: {p.modelNumber || 'N/A'}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="text-[11px] text-slate-400">Model: {p.modelNumber || 'N/A'}</span>
+                            {p.aliases && p.aliases.length > 0 && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300 rounded text-[10px] font-semibold border border-purple-200 dark:border-purple-800/40" title={`Aliases: ${p.aliases.join(', ')}`}>
+                                <Sparkles className="w-2.5 h-2.5" />
+                                {p.aliases.slice(0, 2).join(', ')}{p.aliases.length > 2 ? ` +${p.aliases.length - 2}` : ''}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="p-4">
@@ -801,18 +862,66 @@ function ProductList() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-500 uppercase">Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
-                    placeholder="console, nextgen, sony"
-                  />
+              {/* Search Discovery & Aliases Section */}
+              <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Search Discovery, Aliases & Keywords
+                  </h4>
                 </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Allow customers to instantly discover this product using abbreviations, nicknames, or common gaming terms (e.g. <strong className="text-purple-600 dark:text-purple-400">GTA 5</strong> for Grand Theft Auto V, <strong className="text-purple-600 dark:text-purple-400">RDR</strong> for Red Dead Redemption, or <strong className="text-purple-600 dark:text-purple-400">PS5</strong>).
+                </p>
 
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5 text-purple-500" />
+                        Aliases & Alternative Names (comma-separated)
+                      </span>
+                      <span className="text-[10px] text-purple-600 dark:text-purple-400 font-normal">Highest Search Priority</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={aliases}
+                      onChange={(e) => setAliases(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 dark:text-white"
+                      placeholder="e.g. GTA 5, GTA V, Grand Theft Auto 5, RDR, RDR1, BO6, PS5"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                      <KeyRound className="w-3.5 h-3.5 text-blue-500" />
+                      Search Keywords (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={keywords}
+                      onChange={(e) => setKeywords(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+                      placeholder="e.g. rockstar, heist, wild west, open world, zombies, multiplayer, shooter"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+                      Tags (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+                      placeholder="console, nextgen, sony, exclusive"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
                   <select
@@ -1071,65 +1180,121 @@ function ProductList() {
                       />
                     </label>
                   </div>
-                </div>
-
-                {/* Variation Add Form */}
-                <form onSubmit={handleAddVariation} className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Add SKU Variation</h4>
+                </div>                {/* Variation Add / Edit Form */}
+                <form onSubmit={handleSaveVariation} className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                      {editingVarId ? 'Edit SKU Variation' : 'Add SKU Variation'}
+                    </h4>
+                    {editingVarId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditVariation}
+                        className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
                   
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">SKU Code (Unique)</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">SKU Code (Auto if empty)</label>
                     <input 
                       type="text" 
-                      required 
                       value={varSku} 
                       onChange={(e) => setVarSku(e.target.value)}
-                      placeholder="e.g. PS5-PRO-WHITE-01" 
+                      placeholder="e.g. PS5-NEW-1TB-BLK-01" 
                       className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
                     />
                   </div>
 
+                  {/* 1. Platform & 2. Condition */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Color</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Platform</label>
+                      <select
+                        value={varPlatform}
+                        onChange={(e) => setVarPlatform(e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                      >
+                        <option value="PS5">PS5</option>
+                        <option value="PS4">PS4</option>
+                        <option value="Xbox Series X">Xbox Series X</option>
+                        <option value="Xbox One">Xbox One</option>
+                        <option value="Nintendo Switch">Nintendo Switch</option>
+                        <option value="PC">PC</option>
+                        <option value="Hardware">Hardware / Universal</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Condition</label>
+                      <select
+                        value={varCondition}
+                        onChange={(e) => setVarCondition(e.target.value)}
+                        className="w-full px-2 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                      >
+                        <option value="New">Brand New</option>
+                        <option value="Used">Pre-Owned / Used</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* 3. Color & 4. Storage */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Color Variation</label>
                       <input 
                         type="text" 
                         value={varColor} 
                         onChange={(e) => setVarColor(e.target.value)}
-                        placeholder="White/Black" 
+                        placeholder="e.g. Midnight Black, White" 
                         className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Storage</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Storage Variation</label>
                       <input 
                         type="text" 
                         value={varStorage} 
                         onChange={(e) => setVarStorage(e.target.value)}
-                        placeholder="e.g. 1TB" 
+                        placeholder="e.g. 512GB, 1TB, 2TB" 
                         className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
                       />
                     </div>
                   </div>
 
+                  {/* 5. Edition */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Edition</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Edition Variation</label>
                     <input 
                       type="text" 
                       value={varEdition} 
                       onChange={(e) => setVarEdition(e.target.value)}
-                      placeholder="Standard/Collector" 
+                      placeholder="e.g. Standard, Digital, Collector's, Deluxe" 
                       className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
                     />
                   </div>
 
+                  {/* 6. Bundle */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Bundle Variation</label>
+                    <input 
+                      type="text" 
+                      value={varBundle} 
+                      onChange={(e) => setVarBundle(e.target.value)}
+                      placeholder="e.g. Console Only, With Extra Controller, Game Pack" 
+                      className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none dark:text-white"
+                    />
+                  </div>
+
+                  {/* Price & Cost Price */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Price (PKR)</label>
                       <input 
                         type="number" 
-                        step="0.01"
-                        required
+                        step="0.01" 
+                        required 
                         value={varPrice} 
                         onChange={(e) => setVarPrice(e.target.value)}
                         placeholder="499.99" 
@@ -1140,7 +1305,7 @@ function ProductList() {
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Cost Price (PKR)</label>
                       <input 
                         type="number" 
-                        step="0.01"
+                        step="0.01" 
                         value={varCostPrice} 
                         onChange={(e) => setVarCostPrice(e.target.value)}
                         placeholder="350.00" 
@@ -1149,12 +1314,13 @@ function ProductList() {
                     </div>
                   </div>
 
+                  {/* Stock & Threshold */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase">Stock Qty</label>
                       <input 
                         type="number" 
-                        required
+                        required 
                         value={varStock} 
                         onChange={(e) => setVarStock(e.target.value)}
                         placeholder="10" 
@@ -1173,18 +1339,36 @@ function ProductList() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="btn-brand w-full py-2 rounded-xl text-xs font-bold pt-1.5"
-                  >
-                    Add Variation SKU
-                  </button>
+                  <div className="flex gap-2 pt-1">
+                    {editingVarId && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditVariation}
+                        className="w-1/3 py-2 rounded-xl text-xs font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className={`btn-brand ${editingVarId ? 'flex-1' : 'w-full'} py-2 rounded-xl text-xs font-bold`}
+                    >
+                      {editingVarId ? 'Save Changes' : 'Add Variation SKU'}
+                    </button>
+                  </div>
                 </form>
               </div>
 
               {/* Right col: Variations table list */}
               <div className="lg:col-span-2 space-y-4">
-                <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Active Variations for this Product</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    Active Variations ({selectedProductForVariations.variations?.length || 0})
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    Supports Color, Storage, Edition, Platform, Condition & Bundle
+                  </span>
+                </div>
                 
                 {selectedProductForVariations.variations?.length === 0 ? (
                   <div className="border border-dashed border-slate-200 dark:border-slate-800 p-10 rounded-2xl text-center text-slate-400 text-sm">
@@ -1192,51 +1376,113 @@ function ProductList() {
                   </div>
                 ) : (
                   <div className="bg-slate-50 dark:bg-slate-950/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl overflow-hidden">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-100 dark:bg-slate-900 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
-                          <th className="p-3">SKU</th>
-                          <th className="p-3">Attributes</th>
-                          <th className="p-3">Price</th>
-                          <th className="p-3">Stock</th>
-                          <th className="p-3 text-right">Delete</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {selectedProductForVariations.variations?.map(v => {
-                          const isLowStock = v.stockQuantity <= v.lowStockThreshold;
-                          return (
-                            <tr key={v.id} className="hover:bg-slate-100/50 dark:hover:bg-slate-900/30">
-                              <td className="p-3 font-semibold text-slate-800 dark:text-slate-300">{v.sku}</td>
-                              <td className="p-3 text-slate-500 dark:text-slate-400">
-                                {[v.color, v.storage, v.edition].filter(Boolean).join(' | ') || 'Default'}
-                              </td>
-                              <td className="p-3 font-semibold text-slate-800 dark:text-white">
-                                {formatCurrency(v.price)} <span className="text-[10px] text-slate-400 font-normal">({formatCurrency(v.costPrice || 0)} cost)</span>
-                              </td>
-                              <td className="p-3">
-                                <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
-                                  isLowStock 
-                                    ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' 
-                                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                }`}>
-                                  {v.stockQuantity} in stock
-                                </span>
-                              </td>
-                              <td className="p-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteVariation(v.id)}
-                                  className="text-red-500 hover:text-red-700 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 dark:bg-slate-900 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-800">
+                            <th className="p-3">SKU & Specs</th>
+                            <th className="p-3">Variation Attributes</th>
+                            <th className="p-3">Price</th>
+                            <th className="p-3">Stock</th>
+                            <th className="p-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {selectedProductForVariations.variations?.map((v) => {
+                            const isLowStock = v.stockQuantity <= (v.lowStockThreshold ?? 5);
+                            const isCurrentlyEditing = editingVarId === v.id;
+                            return (
+                              <tr 
+                                key={v.id} 
+                                className={`transition-colors ${isCurrentlyEditing ? 'bg-purple-500/10 dark:bg-purple-500/20' : 'hover:bg-slate-100/50 dark:hover:bg-slate-900/30'}`}
+                              >
+                                <td className="p-3">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 flex-wrap">
+                                    <span>{v.sku}</span>
+                                    {v.platform && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                                        {v.platform}
+                                      </span>
+                                    )}
+                                    {v.condition && (
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                        v.condition === 'New'
+                                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                                          : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                                      }`}>
+                                        {v.condition}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-3 text-slate-600 dark:text-slate-300">
+                                  <div className="flex flex-wrap gap-1 items-center">
+                                    {v.storage && (
+                                      <span className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-[10px] font-medium">
+                                        💾 {v.storage}
+                                      </span>
+                                    )}
+                                    {v.color && (
+                                      <span className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-[10px] font-medium">
+                                        🎨 {v.color}
+                                      </span>
+                                    )}
+                                    {v.edition && (
+                                      <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-medium">
+                                        ⭐ {v.edition}
+                                      </span>
+                                    )}
+                                    {v.bundle && (
+                                      <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-medium">
+                                        📦 {v.bundle}
+                                      </span>
+                                    )}
+                                    {!v.storage && !v.color && !v.edition && !v.bundle && (
+                                      <span className="text-slate-400 text-[11px]">Standard Option</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-3 font-semibold text-slate-800 dark:text-white whitespace-nowrap">
+                                  {formatCurrency(v.price)}{' '}
+                                  <span className="text-[10px] text-slate-400 font-normal">
+                                    ({formatCurrency(v.costPrice || 0)} cost)
+                                  </span>
+                                </td>
+                                <td className="p-3 whitespace-nowrap">
+                                  <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
+                                    isLowStock 
+                                      ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' 
+                                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                  }`}>
+                                    {v.stockQuantity} in stock
+                                  </span>
+                                </td>
+                                <td className="p-3 text-right whitespace-nowrap">
+                                  <div className="inline-flex items-center gap-1 justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditVariation(v)}
+                                      className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                                      title="Edit variation"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteVariation(v.id)}
+                                      className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                      title="Delete variation"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1255,8 +1501,14 @@ function ProductList() {
               </button>
             </div>
           </div>
-      </ModalOverlay>
+        </ModalOverlay>
       )}
+
+      {/* MODAL 3: SEARCH ANALYTICS & TRENDING KEYWORDS */}
+      <SearchAnalyticsModal
+        open={showAnalyticsModal}
+        onClose={() => setShowAnalyticsModal(false)}
+      />
 
     </div>
   );

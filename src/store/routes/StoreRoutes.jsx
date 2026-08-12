@@ -12,6 +12,7 @@ const CmsPage = lazy(() => import('../pages/CmsPage'));
 const RepairPage = lazy(() => import('../pages/RepairPage'));
 const SellPage = lazy(() => import('../pages/SellPage'));
 const ControllerTesterPage = lazy(() => import('../pages/ControllerTesterPage'));
+const WishlistPage = lazy(() => import('../pages/WishlistPage'));
 
 function PageLoader() {
   return <LoadingSpinner size="lg" className="min-h-[50vh]" />;
@@ -25,6 +26,7 @@ export default function StoreRoutes() {
         <Route path="shop" element={<Suspense fallback={<PageLoader />}><ShopPage /></Suspense>} />
         <Route path="product/:id" element={<Suspense fallback={<PageLoader />}><ProductPage /></Suspense>} />
         <Route path="cart" element={<Suspense fallback={<PageLoader />}><CartPage /></Suspense>} />
+        <Route path="wishlist" element={<Suspense fallback={<PageLoader />}><WishlistPage /></Suspense>} />
         <Route path="checkout" element={<Suspense fallback={<PageLoader />}><CheckoutPage /></Suspense>} />
         <Route path="page/:slug" element={<Suspense fallback={<PageLoader />}><CmsPage /></Suspense>} />
         <Route path="repair" element={<Suspense fallback={<PageLoader />}><RepairPage /></Suspense>} />

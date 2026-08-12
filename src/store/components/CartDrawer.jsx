@@ -45,8 +45,20 @@ function CartDrawer() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{item.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {[item.platform, item.storage, item.color].filter(Boolean).join(' · ')}
+                  <p className="text-xs text-gray-400 mt-0.5 flex flex-wrap gap-1 items-center">
+                    {[item.platform, item.storage, item.color, item.edition].filter(Boolean).join(' · ')}
+                    {item.condition && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                        item.condition === 'New' ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'
+                      }`}>
+                        {item.condition}
+                      </span>
+                    )}
+                    {item.bundle && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded font-medium text-purple-300 bg-purple-500/10">
+                        📦 {item.bundle}
+                      </span>
+                    )}
                   </p>
                   <p className="text-sm font-bold text-neon-purple mt-1">{formatCurrency(item.price)}</p>
                   <div className="flex items-center gap-2 mt-2">

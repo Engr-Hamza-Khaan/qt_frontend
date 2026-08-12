@@ -9,8 +9,8 @@ function BrandLogo({
   collapsed = false,
   layout = 'horizontal',
   className = '',
-  nameClassName = 'text-base font-bold leading-none',
-  subtitleClassName = 'text-[10px] uppercase tracking-wider mt-0.5',
+  nameClassName = 'font-outfit font-black text-base sm:text-lg text-white tracking-wider uppercase leading-none',
+  subtitleClassName = 'text-[8px] sm:text-[9px] text-gray-300 tracking-wider font-medium leading-tight mt-0.5 whitespace-nowrap',
 }) {
   if (collapsed) {
     return <Logo variant={variant} size={logoSize} className={className} />;

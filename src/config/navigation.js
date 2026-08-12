@@ -4,6 +4,8 @@ import {
   Zap,
   BarChart3,
   Truck,
+  Megaphone,
+  ScrollText,
 } from 'lucide-react';
 import {
   canAccessDashboard,
@@ -23,6 +25,8 @@ export const PAGE_TITLES = {
   vendors: { title: 'Suppliers', subtitle: 'Manage vendor accounts and payouts' },
   services: { title: 'Service Tickets', subtitle: 'Repairs, trade-ins and live chat' },
   financial: { title: 'Financial Analytics', subtitle: 'Revenue, profit and performance reports' },
+  'announcement-bar': { title: 'Announcement Bar', subtitle: 'Manage store top announcement, message & active status' },
+  'terms-and-conditions': { title: 'Terms & Conditions', subtitle: 'Manage store terms of service, policies & modal content' },
 };
 
 const ALL_NAV_ITEMS = [
@@ -64,6 +68,20 @@ const ALL_NAV_ITEMS = [
     path: '/admin/services',
     icon: Zap,
     label: 'Service Tickets',
+    roles: (role) => isStaffOrAbove(role),
+  },
+  {
+    id: 'announcement-bar',
+    path: '/admin/announcement-bar',
+    icon: Megaphone,
+    label: 'Announcement Bar',
+    roles: (role) => isStaffOrAbove(role),
+  },
+  {
+    id: 'terms-and-conditions',
+    path: '/admin/terms-and-conditions',
+    icon: ScrollText,
+    label: 'Terms & Conditions',
     roles: (role) => isStaffOrAbove(role),
   },
   {

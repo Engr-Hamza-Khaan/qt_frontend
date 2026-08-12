@@ -17,6 +17,8 @@ const ServiceTickets = lazy(() => import('../components/services/ServiceTickets'
 const FinancialReport = lazy(() => import('../components/analytics/FinancialReport'));
 const VendorList = lazy(() => import('../components/vendors/VendorList'));
 const VendorPortal = lazy(() => import('../components/vendors/VendorPortal'));
+const AnnouncementBarSettings = lazy(() => import('../components/settings/AnnouncementBarSettings'));
+const TermsSettings = lazy(() => import('../components/settings/TermsSettings'));
 
 function PageLoader() {
   return <LoadingSpinner size="lg" className="min-h-[400px]" />;
@@ -66,6 +68,8 @@ export default function AdminRoutes() {
         <Route path="discounts" element={<ProtectedRoute roles={staffRoles}><LazyPage><DiscountList /></LazyPage></ProtectedRoute>} />
         <Route path="vendors" element={<ProtectedRoute roles={staffRoles}><LazyPage><VendorList /></LazyPage></ProtectedRoute>} />
         <Route path="services" element={<ProtectedRoute roles={staffRoles}><LazyPage><ServiceTickets /></LazyPage></ProtectedRoute>} />
+        <Route path="announcement-bar" element={<ProtectedRoute roles={staffRoles}><LazyPage><AnnouncementBarSettings /></LazyPage></ProtectedRoute>} />
+        <Route path="terms-and-conditions" element={<ProtectedRoute roles={staffRoles}><LazyPage><TermsSettings /></LazyPage></ProtectedRoute>} />
         <Route path="financial" element={<ProtectedRoute roles={adminRoles}><LazyPage><FinancialReport /></LazyPage></ProtectedRoute>} />
         <Route path="*" element={<RoleRedirect />} />
       </Route>

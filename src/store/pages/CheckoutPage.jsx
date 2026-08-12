@@ -4,6 +4,7 @@ import { CheckCircle, Tag, ChevronLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { storeApi } from '../api';
 import { formatCurrency } from '../../utils/formatters';
+import { openTermsModal } from '../components/TermsModal';
 
 function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
@@ -165,9 +166,14 @@ function CheckoutPage() {
             <h2 className="font-bold text-white font-display">Order Summary</h2>
 
             {items.map((item) => (
-              <div key={item.variationId} className="flex justify-between text-sm">
-                <span className="text-gray-400 truncate mr-2">{item.title} × {item.quantity}</span>
-                <span className="font-medium text-white shrink-0">{formatCurrency(item.price * item.quantity)}</span>
+              <div key={item.variationId} className="flex justify-between items-start text-sm">
+                <div className="min-w-0 mr-2">
+                  <span className="text-gray-300 font-medium truncate block">{item.title} × {item.quantity}</span>
+                  <span className="text-[11px] text-gray-500 block truncate">
+                    {[item.platform, item.storage, item.color, item.edition, item.condition, item.bundle ? `Bundle: ${item.bundle}` : null].filter(Boolean).join(' · ')}
+                  </span>
+                </div>
+                <span className="font-semibold text-white shrink-0">{formatCurrency(item.price * item.quantity)}</span>
               </div>
             ))}
 
@@ -219,7 +225,20 @@ function CheckoutPage() {
               {loading ? 'Placing Order...' : `Place Order — ${formatCurrency(total)}`}
             </button>
 
-            <p className="text-[10px] text-gray-500 text-center">No account required. Guest checkout.</p>
+            <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+              By placing your order, you agree to Quickturn's{' '}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openTermsModal();
+                }}
+                className="text-neon-purple hover:underline"
+              >
+                Terms &amp; Conditions
+              </button>
+              .
+            </p>
           </div>
         </div>
       </form>

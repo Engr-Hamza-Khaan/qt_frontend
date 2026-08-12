@@ -122,7 +122,7 @@ function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-white">
           <div>
             <h3 className="text-xl font-bold mb-1 font-display">Have a console or game to sell?</h3>
-            <p className="text-purple-200/80 text-sm">Get an instant quote for your used console, games, or gaming gear</p>
+            <p className="text-blue-200/80 text-sm">Get an instant quote for your used console, games, or gaming gear</p>
           </div>
           <Link to="/sell" className="whatsapp-glass-btn px-6 py-3 font-display font-bold uppercase tracking-wider text-sm shrink-0">
             Get a Quote
