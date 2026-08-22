@@ -25,8 +25,8 @@ function ServiceTickets() {
   const [chatReplyText, setChatReplyText] = useState('');
   const chatMessagesEndRef = useRef(null);
 
-  const fetchData = async (tab = activeTab) => {
-    setLoading(true);
+  const fetchData = async (tab = activeTab, silent = false) => {
+    if (!silent) setLoading(true);
     setError('');
     try {
       if (tab === 'repairs') {
@@ -40,9 +40,9 @@ function ServiceTickets() {
         if (res.success) setChats(res.data);
       }
     } catch (err) {
-      setError(err.message || 'Failed to sync service tickets.');
+      if (!silent) setError(err.message || 'Failed to sync service tickets.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -65,12 +65,43 @@ function ServiceTickets() {
     fetchData(activeTab);
   }, [activeTab]);
 
-  // Scroll active chat to bottom
+  // Real-time live polling for chats and active chat transcript
+  useEffect(() => {
+    let timer;
+    if (activeTab === 'chats') {
+      timer = setInterval(async () => {
+        try {
+          const chatsRes = await api.services.getChats();
+          if (chatsRes.success) setChats(chatsRes.data);
+
+          if (activeChat?.id) {
+            const chatRes = await api.services.getChatById(activeChat.id);
+            if (chatRes.success) {
+              setActiveChat((prev) => {
+                if (!prev) return chatRes.data;
+                if (JSON.stringify(prev.messages) !== JSON.stringify(chatRes.data.messages)) {
+                  return chatRes.data;
+                }
+                return prev;
+              });
+            }
+          }
+        } catch {
+          // Silent catch during background poll
+        }
+      }, 4000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [activeTab, activeChat?.id]);
+
+  // Scroll active chat to bottom on new messages
   useEffect(() => {
     if (activeChat) {
       chatMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [activeChat]);
+  }, [activeChat?.messages?.length]);
 
   // Open Repair / Sell detail
   const handleOpenTicket = (ticket) => {
@@ -121,21 +152,22 @@ function ServiceTickets() {
 
   const handleSendChatReply = async (e) => {
     e.preventDefault();
-    if (!chatReplyText.trim()) return;
+    if (!chatReplyText.trim() || !activeChat) return;
+
+    const replyText = chatReplyText.trim();
+    setChatReplyText('');
+
+    // Optimistic update of transcript locally
+    const optimisticMsg = { sender: 'agent', text: replyText, timestamp: new Date().toISOString() };
+    setActiveChat(prev => ({
+      ...prev,
+      messages: [...(prev?.messages || []), optimisticMsg]
+    }));
 
     try {
-      const res = await api.services.replyToChat(activeChat.id, chatReplyText);
-      if (res.success) {
-        // Optimistic update of transcript locally
-        setActiveChat(prev => ({
-          ...prev,
-          messages: [
-            ...prev.messages,
-            { sender: 'agent', text: chatReplyText, timestamp: new Date() }
-          ]
-        }));
-        setChatReplyText('');
-        // Refresh conversations list to update latest snippet
+      const res = await api.services.replyToChat(activeChat.id, replyText);
+      if (res.success && res.data) {
+        setActiveChat(res.data);
         const chatsListRes = await api.services.getChats();
         if (chatsListRes.success) setChats(chatsListRes.data);
       }
@@ -178,6 +210,7 @@ function ServiceTickets() {
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 dark:border-slate-850 gap-1 overflow-x-auto">
         <button
+          type="button"
           onClick={() => {
             setActiveTab('repairs');
             setSelectedTicket(null);
@@ -194,6 +227,7 @@ function ServiceTickets() {
         </button>
         
         <button
+          type="button"
           onClick={() => {
             setActiveTab('sells');
             setSelectedTicket(null);
@@ -210,6 +244,7 @@ function ServiceTickets() {
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setActiveTab('chats');
             setSelectedTicket(null);
@@ -279,6 +314,7 @@ function ServiceTickets() {
                       </td>
                       <td className="p-4 text-right">
                         <button
+                          type="button"
                           onClick={() => handleOpenTicket(rep)}
                           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-white text-xs font-semibold rounded-lg"
                         >
@@ -336,6 +372,7 @@ function ServiceTickets() {
                       </td>
                       <td className="p-4 text-right">
                         <button
+                          type="button"
                           onClick={() => handleOpenTicket(sell)}
                           className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-white text-xs font-semibold rounded-lg"
                         >
@@ -370,6 +407,7 @@ function ServiceTickets() {
 
                     return (
                       <button
+                        type="button"
                         key={chat.id}
                         onClick={() => handleSelectChat(chat)}
                         className={`w-full text-left p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all flex items-start gap-3 ${
@@ -484,6 +522,7 @@ function ServiceTickets() {
                 {activeTab === 'repairs' ? 'Diagnose Repair Ticket' : 'Approve Valuation Ticket'}
               </h3>
               <button 
+                type="button"
                 onClick={() => setSelectedTicket(null)}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
               >
