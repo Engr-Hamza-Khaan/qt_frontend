@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, ChevronLeft, Check, Minus, Plus, ShieldCheck, Truck, Heart,
   Sparkles, Layers, Box, Cpu, HardDrive, Palette, Award, AlertTriangle,
@@ -15,6 +15,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 function ProductPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { addItem, setIsOpen } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const { data, loading, error } = useFetch(() => storeApi.getProduct(id), [id]);
@@ -117,7 +118,7 @@ function ProductPage() {
     const bundle = activeVar?.bundle || selectedBundle || product.attributes?.bundle;
     if (bundle) attrs['Bundle'] = bundle;
 
-    if (product.modelNumber) attrs['Model Number'] = product.modelNumber;
+    if (activeVar?.sku || product.modelNumber) attrs['SKU / Model'] = activeVar?.sku || product.modelNumber;
 
     // 3. Dynamic JSON Key-Value pairs from backend product.attributes
     if (product.attributes && typeof product.attributes === 'object') {
@@ -152,28 +153,56 @@ function ProductPage() {
     return attrs;
   }, [product, activeVar, selectedPlatform, selectedCondition, selectedEdition, selectedColor, selectedStorage, selectedBundle]);
 
-  // Find best variation matching target filters
-  const findMatchingVariation = (target) => {
-    if (rawVariations.length === 0) return null;
-    let bestMatch = rawVariations[0];
-    let bestScore = -1;
+  // Find best variation matching target filters, prioritizing the dimension that was clicked
+  const findMatchingVariation = (target, changedDimension = null) => {
+    if (!rawVariations || rawVariations.length === 0) return null;
+    let bestMatch = null;
+    let bestScore = -Infinity;
 
     for (const v of rawVariations) {
       let score = 0;
-      if (target.platform && v.platform === target.platform) score += 5;
-      if (target.condition && v.condition === target.condition) score += 4;
-      if (target.storage && v.storage === target.storage) score += 3;
-      if (target.color && v.color === target.color) score += 3;
-      if (target.edition && v.edition === target.edition) score += 2;
-      if (target.bundle && v.bundle === target.bundle) score += 2;
-      if (v.stockQuantity > 0) score += 1;
+
+      // 1. Give highest priority to matching the dimension the user explicitly clicked
+      if (changedDimension && target[changedDimension]) {
+        const targetVal = String(target[changedDimension]).trim().toLowerCase();
+        const vVal = v[changedDimension] ? String(v[changedDimension]).trim().toLowerCase() : '';
+
+        if (vVal === targetVal) {
+          score += 1000;
+        } else {
+          score -= 500;
+        }
+      }
+
+      // 2. Score other target dimensions
+      const dimensions = ['platform', 'condition', 'storage', 'color', 'edition', 'bundle'];
+      for (const dim of dimensions) {
+        if (target[dim]) {
+          const targetVal = String(target[dim]).trim().toLowerCase();
+          const vVal = v[dim] ? String(v[dim]).trim().toLowerCase() : '';
+
+          if (vVal === targetVal) {
+            score += 100;
+          } else if (!vVal) {
+            score += 10;
+          } else {
+            score -= 5;
+          }
+        }
+      }
+
+      // 3. Prefer in-stock items
+      if (v.stockQuantity > 0) {
+        score += 50;
+      }
 
       if (score > bestScore) {
         bestScore = score;
         bestMatch = v;
       }
     }
-    return bestMatch;
+
+    return bestMatch || rawVariations[0];
   };
 
   const handleSelectDimension = (dimension, value) => {
@@ -193,27 +222,27 @@ function ProductPage() {
     if (dimension === 'edition') setSelectedEdition(value);
     if (dimension === 'bundle') setSelectedBundle(value);
 
-    const match = findMatchingVariation(updated);
+    const match = findMatchingVariation(updated, dimension);
     if (match) {
       setSelectedVariation(match);
-      if (match.platform) setSelectedPlatform(match.platform);
-      if (match.condition) setSelectedCondition(match.condition);
-      if (match.storage) setSelectedStorage(match.storage);
-      if (match.color) setSelectedColor(match.color);
-      if (match.edition) setSelectedEdition(match.edition);
-      if (match.bundle) setSelectedBundle(match.bundle);
+      setSelectedPlatform(match.platform || (dimension === 'platform' ? value : ''));
+      setSelectedCondition(match.condition || (dimension === 'condition' ? value : ''));
+      setSelectedStorage(match.storage || (dimension === 'storage' ? value : ''));
+      setSelectedColor(match.color || (dimension === 'color' ? value : ''));
+      setSelectedEdition(match.edition || (dimension === 'edition' ? value : ''));
+      setSelectedBundle(match.bundle || (dimension === 'bundle' ? value : ''));
       setQuantity(1);
     }
   };
 
   const handleSelectVariationDirect = (v) => {
     setSelectedVariation(v);
-    setSelectedPlatform(v.platform || selectedPlatform);
-    setSelectedCondition(v.condition || selectedCondition);
-    setSelectedStorage(v.storage || selectedStorage);
-    setSelectedColor(v.color || selectedColor);
-    setSelectedEdition(v.edition || selectedEdition);
-    setSelectedBundle(v.bundle || selectedBundle);
+    setSelectedPlatform(v.platform || '');
+    setSelectedCondition(v.condition || '');
+    setSelectedStorage(v.storage || '');
+    setSelectedColor(v.color || '');
+    setSelectedEdition(v.edition || '');
+    setSelectedBundle(v.bundle || '');
     setQuantity(1);
   };
 
@@ -228,6 +257,7 @@ function ProductPage() {
     if (!activeVar || !inStock) return;
     addItem(product, activeVar, quantity);
     setIsOpen(false);
+    navigate('/checkout');
   };
 
   if (loading) return <LoadingSpinner size="lg" className="min-h-[60vh]" />;
@@ -427,11 +457,11 @@ function ProductPage() {
                     <span className="flex items-center gap-1 text-indigo-300 font-bold">
                       <Award className="w-3.5 h-3.5 text-indigo-400" /> Edition:
                     </span>
-                    <span className="text-white font-bold">{selectedEdition || activeVar?.edition}</span>
+                    <span className="text-white font-bold">{activeVar?.edition || selectedEdition}</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {editions.map((ed) => {
-                      const isSelected = (activeVar?.edition || selectedEdition) === ed;
+                      const isSelected = String(activeVar?.edition || selectedEdition || '').toLowerCase() === String(ed).toLowerCase();
                       return (
                         <button
                           key={ed}
@@ -457,11 +487,11 @@ function ProductPage() {
                     <span className="flex items-center gap-1 text-pink-300 font-bold">
                       <Palette className="w-3.5 h-3.5 text-pink-400" /> Color:
                     </span>
-                    <span className="text-white font-bold">{selectedColor || activeVar?.color}</span>
+                    <span className="text-white font-bold">{activeVar?.color || selectedColor}</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {colors.map((col) => {
-                      const isSelected = (activeVar?.color || selectedColor) === col;
+                      const isSelected = String(activeVar?.color || selectedColor || '').toLowerCase() === String(col).toLowerCase();
                       return (
                         <button
                           key={col}
@@ -495,11 +525,11 @@ function ProductPage() {
                     <span className="flex items-center gap-1 text-emerald-300 font-bold">
                       <HardDrive className="w-3.5 h-3.5 text-emerald-400" /> Storage Capacity:
                     </span>
-                    <span className="text-white font-bold">{selectedStorage || activeVar?.storage}</span>
+                    <span className="text-white font-bold">{activeVar?.storage || selectedStorage}</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {storages.map((stor) => {
-                      const isSelected = (activeVar?.storage || selectedStorage) === stor;
+                      const isSelected = String(activeVar?.storage || selectedStorage || '').toLowerCase() === String(stor).toLowerCase();
                       return (
                         <button
                           key={stor}
@@ -525,11 +555,11 @@ function ProductPage() {
                     <span className="flex items-center gap-1 text-blue-300 font-bold">
                       <Cpu className="w-3.5 h-3.5 text-blue-400" /> Platform:
                     </span>
-                    <span className="text-white font-bold">{selectedPlatform || activeVar?.platform}</span>
+                    <span className="text-white font-bold">{activeVar?.platform || selectedPlatform}</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {platforms.map((plat) => {
-                      const isSelected = (activeVar?.platform || selectedPlatform) === plat;
+                      const isSelected = String(activeVar?.platform || selectedPlatform || '').toLowerCase() === String(plat).toLowerCase();
                       return (
                         <button
                           key={plat}
@@ -555,11 +585,11 @@ function ProductPage() {
                     <span className="flex items-center gap-1 text-amber-300 font-bold">
                       <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Condition:
                     </span>
-                    <span className="text-white font-bold">{(activeVar?.condition || selectedCondition) === 'New' ? 'Brand New' : 'Pre-Owned'}</span>
+                    <span className="text-white font-bold">{(activeVar?.condition || selectedCondition) === 'New' ? 'Brand New' : (activeVar?.condition || selectedCondition || 'Pre-Owned')}</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {conditions.map((cond) => {
-                      const isSelected = (activeVar?.condition || selectedCondition) === cond;
+                      const isSelected = String(activeVar?.condition || selectedCondition || '').toLowerCase() === String(cond).toLowerCase();
                       return (
                         <button
                           key={cond}
@@ -574,7 +604,7 @@ function ProductPage() {
                         >
                           <div>
                             <p className="font-bold flex items-center gap-1">
-                              {cond === 'New' ? '✨ Brand New' : '🔄 Pre-Owned'}
+                              {cond === 'New' ? '✨ Brand New' : `🔄 ${cond}`}
                             </p>
                           </div>
                           {isSelected && <Check className="w-4 h-4 shrink-0" />}
@@ -592,11 +622,11 @@ function ProductPage() {
                     <span className="flex items-center gap-1 text-purple-300 font-bold">
                       <Box className="w-3.5 h-3.5 text-purple-400" /> Bundle Package:
                     </span>
-                    <span className="text-white font-bold">{selectedBundle || activeVar?.bundle}</span>
+                    <span className="text-white font-bold">{activeVar?.bundle || selectedBundle}</span>
                   </label>
                   <div className="flex flex-col gap-2">
                     {bundles.map((bun) => {
-                      const isSelected = (activeVar?.bundle || selectedBundle) === bun;
+                      const isSelected = String(activeVar?.bundle || selectedBundle || '').toLowerCase() === String(bun).toLowerCase();
                       return (
                         <button
                           key={bun}
@@ -672,9 +702,17 @@ function ProductPage() {
                               {[v.platform, v.storage, v.color, v.bundle].filter(Boolean).join(' · ') || 'Standard Specs'}
                             </p>
                           </div>
-                          <div className="text-right">
-                            <p className="font-extrabold text-sm text-neon-purple-light">{formatCurrency(v.price)}</p>
-                            <p className="text-[10px] text-gray-500">{v.stockQuantity > 0 ? `${v.stockQuantity} in stock` : 'Out of Stock'}</p>
+                          <div className="text-right flex items-center gap-3">
+                            <div>
+                              <p className="font-extrabold text-sm text-neon-purple-light">{formatCurrency(v.price)}</p>
+                              <p className="text-[10px] text-gray-500">{v.stockQuantity > 0 ? `${v.stockQuantity} in stock` : 'Out of Stock'}</p>
+                            </div>
+                            <span className={`px-2.5 py-1 text-[11px] rounded-lg font-bold flex items-center gap-1 shrink-0 ${isSelected
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                : 'bg-white/10 text-gray-400'
+                              }`}>
+                              {isSelected ? <><Check className="w-3 h-3 text-emerald-400" /> Selected</> : 'Select'}
+                            </span>
                           </div>
                         </div>
                       );
@@ -859,26 +897,36 @@ function ProductPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {rawVariations.map((v) => (
-                      <tr key={v.id} className={activeVar?.id === v.id ? 'bg-neon-purple/15 text-white font-bold' : 'hover:bg-white/5'}>
-                        <td className="p-3 font-mono text-neon-purple-light">{v.sku}</td>
-                        <td className="p-3">{v.edition || '—'}</td>
-                        <td className="p-3">{v.color || '—'}</td>
-                        <td className="p-3">{v.storage || '—'}</td>
-                        <td className="p-3 font-semibold">{v.condition || '—'}</td>
-                        <td className="p-3">{v.bundle || '—'}</td>
-                        <td className="p-3 font-bold text-emerald-400">{formatCurrency(v.price)}</td>
-                        <td className="p-3">
-                          <button
-                            type="button"
-                            onClick={() => handleSelectVariationDirect(v)}
-                            className="px-2.5 py-1 rounded-lg bg-neon-purple/20 text-neon-purple-light hover:bg-neon-purple hover:text-white transition font-semibold"
-                          >
-                            Select
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {rawVariations.map((v) => {
+                      const isSelected = activeVar?.id === v.id;
+                      return (
+                        <tr key={v.id} className={isSelected ? 'bg-neon-purple/15 text-white font-bold' : 'hover:bg-white/5'}>
+                          <td className="p-3 font-mono text-neon-purple-light">{v.sku}</td>
+                          <td className="p-3">{v.edition || '—'}</td>
+                          <td className="p-3">{v.color || '—'}</td>
+                          <td className="p-3">{v.storage || '—'}</td>
+                          <td className="p-3 font-semibold">{v.condition || '—'}</td>
+                          <td className="p-3">{v.bundle || '—'}</td>
+                          <td className="p-3 font-bold text-emerald-400">{formatCurrency(v.price)}</td>
+                          <td className="p-3">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectVariationDirect(v)}
+                              className={`px-3 py-1.5 rounded-lg transition font-bold text-xs inline-flex items-center gap-1 ${isSelected
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                  : 'bg-neon-purple/20 text-neon-purple-light hover:bg-neon-purple hover:text-white'
+                                }`}
+                            >
+                              {isSelected ? (
+                                <><Check className="w-3.5 h-3.5 text-emerald-400" /> Selected</>
+                              ) : (
+                                'Select'
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
