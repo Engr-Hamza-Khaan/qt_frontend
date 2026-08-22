@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api/client';
-import { 
-  ShoppingBag, Search, Eye, RefreshCw, Truck, CreditCard, 
+import {
+  ShoppingBag, Search, Eye, RefreshCw, Truck, CreditCard,
   User, CheckCircle, Clock, X, AlertCircle, Award, ExternalLink, Trash2,
   Edit3, Plus, Minus, MapPin, FileText, Save, Undo
 } from 'lucide-react';
@@ -14,7 +14,7 @@ function OrderList() {
   const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -24,7 +24,7 @@ function OrderList() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [assigningItemId, setAssigningItemId] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState('');
-  
+
   // Quick status edit values
   const [orderStatus, setOrderStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
@@ -86,8 +86,8 @@ function OrderList() {
 
   // Filter logic
   const filteredOrders = orders.filter(o => {
-    const matchesSearch = o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (o.customer?.name && o.customer.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = o.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.customer?.name && o.customer.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter ? o.orderStatus === statusFilter : true;
     const matchesPayment = paymentFilter ? o.paymentStatus === paymentFilter : true;
     return matchesSearch && matchesStatus && matchesPayment;
@@ -161,7 +161,7 @@ function OrderList() {
 
   const handleAddItemToEdit = () => {
     if (!selectedVariationToAdd) return;
-    
+
     let foundVar = null;
     let foundProd = null;
 
@@ -370,7 +370,7 @@ function OrderList() {
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -522,7 +522,7 @@ function OrderList() {
       <ModalOverlay open={!!selectedOrder}>
         {selectedOrder && (
           <div className="bg-white dark:bg-slate-900 w-full max-w-6xl rounded-3xl border border-slate-200/50 dark:border-slate-800 overflow-hidden shadow-2xl transition-all">
-            
+
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -558,7 +558,7 @@ function OrderList() {
                     Cancel Edit
                   </button>
                 )}
-                <button 
+                <button
                   onClick={() => {
                     setSelectedOrder(null);
                     setIsEditingOrder(false);
@@ -574,7 +574,7 @@ function OrderList() {
             {isEditingOrder ? (
               /* ================= FULL EDIT FORM ================= */
               <form onSubmit={handleSaveFullOrderEdit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-                
+
                 {/* Section 1: Line Items Editor */}
                 <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800 pb-3">
@@ -701,7 +701,7 @@ function OrderList() {
                       <MapPin className="w-4 h-4 text-blue-500" />
                       Shipping Address
                     </h4>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Street Address</label>
@@ -929,16 +929,16 @@ function OrderList() {
             ) : (
               /* ================= READ ONLY DETAILS VIEW ================= */
               <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 max-h-[85vh] overflow-y-auto">
-                
+
                 {/* Left Column: items & assignment */}
                 <div className="lg:col-span-2 space-y-6">
-                  
+
                   {/* Order Items Section */}
                   <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-4">
                     <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 border-b border-slate-200/50 dark:border-slate-800 pb-2">
                       Line Items & Fulfillment Allocation
                     </h4>
-                    
+
                     <div className="space-y-4">
                       {selectedOrder.items?.map(item => {
                         const variation = item.variation;
@@ -949,20 +949,19 @@ function OrderList() {
                               <h5 className="font-bold text-sm text-slate-800 dark:text-white">{product?.title || 'Unknown Product'}</h5>
                               <p className="text-xs text-slate-400 mt-0.5">SKU: {variation?.sku || 'N/A'}</p>
                               <p className="text-xs text-slate-500 mt-1">
-                                Qty: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.quantity}</span> | 
+                                Qty: <span className="font-semibold text-slate-700 dark:text-slate-300">{item.quantity}</span> |
                                 Price: <span className="font-semibold text-slate-700 dark:text-slate-300">{formatCurrency(item.price)}</span>
                               </p>
                             </div>
-                            
+
                             {/* Assignment flow */}
                             <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
                               <div className="text-right">
                                 <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Fulfillment status</div>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md mt-0.5 inline-block ${
-                                  item.fulfillmentStatus === 'Assigned' 
-                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md mt-0.5 inline-block ${item.fulfillmentStatus === 'Assigned'
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
                                     : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400'
-                                }`}>
+                                  }`}>
                                   {item.fulfillmentStatus}
                                 </span>
                                 {item.assignedVendor && (
@@ -985,13 +984,13 @@ function OrderList() {
                                           <option key={v.id} value={v.id}>{v.companyName} ({formatCurrency(v.balance)} bal)</option>
                                         ))}
                                       </select>
-                                      <button 
+                                      <button
                                         onClick={() => handleAssignSupplier(item.id)}
                                         className="btn-brand px-2 py-1 rounded-lg text-[10px] font-bold"
                                       >
                                         Assign
                                       </button>
-                                      <button 
+                                      <button
                                         onClick={() => setAssigningItemId(null)}
                                         className="px-1.5 py-1 bg-slate-200 text-slate-600 rounded-lg text-[10px]"
                                       >
@@ -1031,7 +1030,7 @@ function OrderList() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h5 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-2">Customer Context</h5>
                       <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-start gap-2">
@@ -1048,13 +1047,13 @@ function OrderList() {
 
                 {/* Right Column: Update statuses & logistics */}
                 <div className="lg:col-span-1 space-y-6">
-                  
+
                   {/* Billing Summary */}
                   <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
                     <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 border-b border-slate-200/50 dark:border-slate-800 pb-2">
                       Payment Invoice
                     </h4>
-                    
+
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between text-slate-500">
                         <span>Payment Method:</span>
@@ -1189,7 +1188,7 @@ function OrderList() {
                     </button>
                   </div>
                 )}
-                <button 
+                <button
                   type="button"
                   onClick={() => setSelectedOrder(null)}
                   className="ml-auto px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition"

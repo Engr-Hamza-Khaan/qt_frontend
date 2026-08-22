@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, DollarSign, TrendingUp, ShoppingBag, Wallet, RefreshCw, ArrowRight,
+  Calendar, Filter, X, RotateCcw
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { api } from '../../api/client';
@@ -38,11 +39,18 @@ function getLedgerColor(type) {
 
 function VendorPortal() {
   const { user } = useAuth();
-  const { data, loading, error, refetch } = useFetch(() => api.vendors.getPortalDashboard());
+  const [preset, setPreset] = useState('30d');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const { data, loading, error, refetch } = useFetch(
+    () => api.vendors.getPortalDashboard({ preset, startDate, endDate }),
+    [preset, startDate, endDate]
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
-      refetch().catch(() => {});
+      refetch().catch(() => { });
     }, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [refetch]);
@@ -81,6 +89,21 @@ function VendorPortal() {
     { title: 'Current Balance', value: formatCurrency(summary.currentBalance), icon: Wallet, color: 'from-cyan-500 to-blue-600' },
     { title: 'Total Paid Out', value: formatCurrency(summary.totalPaid), icon: DollarSign, color: 'from-slate-500 to-slate-600' },
   ];
+
+  const getTrendSubtitle = () => {
+    if (preset === '7d') return 'Last 7 days';
+    if (preset === '30d') return 'Last 30 days';
+    if (preset === 'this_month') return 'This month';
+    if (preset === 'this_year') return 'This year';
+    if (preset === 'all') return 'All time';
+    if (preset === 'custom') {
+      if (startDate && endDate) return `${startDate} to ${endDate}`;
+      if (startDate) return `From ${startDate}`;
+      if (endDate) return `Until ${endDate}`;
+      return 'Custom date range';
+    }
+    return 'Earnings trend';
+  };
 
   return (
     <div className="space-y-6">
@@ -124,6 +147,79 @@ function VendorPortal() {
         </div>
       )}
 
+      {/* Date Range Filter Bar */}
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl p-4 border border-slate-200/50 dark:border-slate-700/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-semibold text-sm">
+          <Calendar className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span>Date Range Filter:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { id: '7d', label: 'Last 7 Days' },
+            { id: '30d', label: 'Last 30 Days' },
+            { id: 'this_month', label: 'This Month' },
+            { id: 'this_year', label: 'This Year' },
+            { id: 'all', label: 'All Time' },
+            { id: 'custom', label: 'Custom Range' },
+          ].map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => {
+                setPreset(p.id);
+                if (p.id !== 'custom') {
+                  setStartDate('');
+                  setEndDate('');
+                }
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition ${preset === p.id
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {preset === 'custom' && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700 lg:pl-4">
+            <div className="flex items-center gap-1 text-xs text-slate-500">
+              <span className="font-medium">From:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-1 text-xs text-slate-500">
+              <span className="font-medium">To:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
+                title="Clear custom dates"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {stats.map((stat) => (
           <div
@@ -146,7 +242,7 @@ function VendorPortal() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-6">
           <Card>
-            <Card.Header title="Earnings Trend" subtitle="Last 30 days — auto-refreshes every 30s" />
+            <Card.Header title="Earnings Trend" subtitle={`${getTrendSubtitle()} — auto-refreshes every 30s`} />
             <div className="h-72">
               {trends.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-slate-400">

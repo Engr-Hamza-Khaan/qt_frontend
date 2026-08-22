@@ -187,7 +187,13 @@ export const api = {
     delete: async (id) => request(`/vendors/${id}`, { method: 'DELETE' }),
     payout: async (id, amount, notes) =>
       request(`/vendors/${id}/payouts`, { method: 'POST', body: { amount, notes } }),
-    getPortalDashboard: async () => request('/vendors/portal/dashboard'),
+    getPortalDashboard: async (params = {}) => {
+      const query = new URLSearchParams();
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') query.append(key, val);
+      });
+      return request(`/vendors/portal/dashboard?${query.toString()}`);
+    },
   },
 
   discounts: {

@@ -1,5 +1,7 @@
 export function formatCurrency(value) {
-  const num = parseFloat(value) || 0;
+  if (value === undefined || value === null) return '';
+  const num = parseFloat(value);
+  if (isNaN(num)) return '';
   const formatted = num.toLocaleString('en-PK', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
@@ -8,7 +10,9 @@ export function formatCurrency(value) {
 }
 
 export function formatNumber(value) {
-  return (parseInt(value, 10) || 0).toLocaleString();
+  if (value === undefined || value === null) return '';
+  const num = parseInt(value, 10);
+  return isNaN(num) ? '' : num.toLocaleString();
 }
 
 export function formatDate(date, options = {}) {

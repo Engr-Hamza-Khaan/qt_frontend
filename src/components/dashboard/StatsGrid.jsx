@@ -30,7 +30,7 @@ function StatsGrid({ cards = {} }) {
     },
     {
       title: 'Returned Orders',
-      value: formatNumber(cards.returnedOrders || 0),
+      value: formatNumber(cards.returnedOrders),
       sub: 'Processed returns',
       icon: RotateCcw,
       color: 'from-amber-500 to-rose-600',
