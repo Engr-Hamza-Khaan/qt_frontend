@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { isAdmin } from '../../utils/roles';
 import { 
   Users, Search, UserCheck, UserX, Clock, ShoppingCart, 
-  Mail, Phone, BookOpen, AlertCircle, X, ChevronRight, Trash2
+  Mail, Phone, BookOpen, AlertCircle, X, ChevronRight, Trash2,
+  Edit3, Check, FileText
 } from 'lucide-react';
 import ModalOverlay from '../ui/ModalOverlay';
 import { formatCurrency } from '../../utils/formatters';
@@ -25,6 +26,8 @@ function CustomerList() {
   const [orderHistory, setOrderHistory] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [supportNotes, setSupportNotes] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -47,6 +50,7 @@ function CustomerList() {
   const handleSelectCustomer = async (cust) => {
     setCustDetailsLoading(true);
     setSelectedCust(cust);
+    setIsEditingNotes(false);
     try {
       const res = await api.customers.getById(cust.id);
       if (res.success) {
@@ -58,6 +62,21 @@ function CustomerList() {
       alert(err.message || 'Failed to retrieve profile details.');
     } finally {
       setCustDetailsLoading(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!selectedCust) return;
+    setSavingNotes(true);
+    try {
+      const res = await api.customers.updateNotes(selectedCust.id, supportNotes);
+      if (res.success) {
+        setIsEditingNotes(false);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to save staff notes.');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -264,7 +283,7 @@ function CustomerList() {
                       <div className="flex justify-between">
                         <span className="text-slate-500">Status:</span>
                         <span className={`font-semibold ${selectedCust.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {selectedCust.isActive ? 'Active Active' : 'Blocked'}
+                          {selectedCust.isActive ? 'Active' : 'Blocked'}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -279,10 +298,71 @@ function CustomerList() {
                   </div>
 
                   <div className="bg-slate-50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Admin Staff Notes</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-3 border border-slate-200/50 dark:border-slate-800 rounded-xl leading-relaxed">
-                      "{supportNotes || 'No registration remarks.'}"
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
+                        Admin Staff Notes
+                      </h4>
+                      {!isEditingNotes ? (
+                        <button
+                          onClick={() => setIsEditingNotes(true)}
+                          title="Edit staff notes"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setIsEditingNotes(false)}
+                            disabled={savingNotes}
+                            className="text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveNotes}
+                            disabled={savingNotes}
+                            className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded-lg flex items-center gap-1 transition shadow-sm disabled:opacity-50"
+                          >
+                            {savingNotes ? (
+                              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" />
+                            )}
+                            Save
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isEditingNotes ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={supportNotes}
+                          onChange={(e) => setSupportNotes(e.target.value)}
+                          placeholder="Add internal notes for staff about this customer..."
+                          rows={3}
+                          className="w-full text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 p-3 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-y leading-relaxed"
+                        />
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => setIsEditingNotes(true)}
+                        className="cursor-pointer group bg-white dark:bg-slate-900 p-3 border border-slate-200/50 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 rounded-xl transition"
+                      >
+                        {supportNotes && supportNotes.trim() ? (
+                          <p className="text-xs text-slate-700 dark:text-slate-300 italic leading-relaxed whitespace-pre-wrap">
+                            "{supportNotes.trim()}"
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400 dark:text-slate-500 italic flex items-center gap-1.5">
+                            <Edit3 className="w-3.5 h-3.5 opacity-60 group-hover:text-blue-500 transition-colors" />
+                            No staff notes added yet. Click to add notes...
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

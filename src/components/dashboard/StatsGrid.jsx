@@ -1,4 +1,4 @@
-import { DollarSign, Users, ShoppingCart, Clock, Package, AlertTriangle } from 'lucide-react';
+import { DollarSign, Users, ShoppingCart, Clock, Package, RotateCcw } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../../utils/formatters';
 
 function StatsGrid({ cards = {} }) {
@@ -29,6 +29,15 @@ function StatsGrid({ cards = {} }) {
       textColor: 'text-purple-600 dark:text-purple-400',
     },
     {
+      title: 'Returned Orders',
+      value: formatNumber(cards.returnedOrders || 0),
+      sub: 'Processed returns',
+      icon: RotateCcw,
+      color: 'from-amber-500 to-rose-600',
+      bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+      textColor: 'text-amber-600 dark:text-amber-400',
+    },
+    {
       title: 'Active Suppliers',
       value: formatNumber(cards.totalVendors),
       sub: cards.totalProductsSold ? `${formatNumber(cards.totalProductsSold)} units sold` : null,
@@ -40,7 +49,7 @@ function StatsGrid({ cards = {} }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
       {stats.map((stat) => (
         <div
           key={stat.title}

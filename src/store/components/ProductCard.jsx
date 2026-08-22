@@ -8,6 +8,9 @@ import {
   getLowestPrice,
   getTotalStock,
   getProductPlatforms,
+  getPlatformBadgeStyle,
+  formatPlatformLabel,
+  getProductConditionTag,
 } from '../utils';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -28,6 +31,7 @@ function ProductCard({ product }) {
   const price = getLowestPrice(product);
   const inStock = getTotalStock(product) > 0;
   const platforms = getProductPlatforms(product);
+  const conditionTag = getProductConditionTag(product);
   const favorited = isInWishlist(product?.id);
 
   const handleWishlistClick = (e) => {
@@ -89,35 +93,56 @@ function ProductCard({ product }) {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={handleWishlistClick}
-        className={`absolute top-2.5 left-2.5 z-30 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-md ${
-          favorited
-            ? 'bg-rose-500 text-white shadow-[0_0_14px_rgba(244,63,94,0.75)] scale-105'
-            : 'bg-black/50 border border-white/20 text-gray-300 hover:text-white hover:bg-rose-500/80 hover:border-rose-500/80 shadow-md'
-        }`}
-        aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
-        title={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
-      >
-        <Heart className={`w-4 h-4 transition-transform ${favorited ? 'fill-current scale-110' : ''}`} />
-      </button>
+      {/* Top Header Overlay Badges (Wishlist + Sale on left, Dynamic Platform Badges + NEW/OLD Tag on right) */}
+      <div className="absolute top-2.5 inset-x-2.5 z-30 flex items-start justify-between gap-1.5 pointer-events-none">
+        {/* Left Side: Wishlist Heart & Sale Tag */}
+        <div className="flex items-center gap-1.5 pointer-events-auto shrink-0">
+          <button
+            type="button"
+            onClick={handleWishlistClick}
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-md ${
+              favorited
+                ? 'bg-rose-500 text-white shadow-[0_0_14px_rgba(244,63,94,0.75)] scale-105'
+                : 'bg-black/60 border border-white/20 text-gray-300 hover:text-white hover:bg-rose-500/80 hover:border-rose-500/80 shadow-md'
+            }`}
+            aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
+            title={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
+          >
+            <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform ${favorited ? 'fill-current scale-110' : ''}`} />
+          </button>
 
-      {product.isFlashSale && (
-        <span className="absolute top-2.5 right-2.5 z-20 px-2.5 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider shadow-md">
-          Sale
-        </span>
-      )}
-
-      {platforms.length > 0 && (
-        <div className="store-product-card__platforms">
-          {platforms.map((platform) => (
-            <span key={platform} className="store-product-card__platform-badge">
-              {platform}
+          {(product.isFlashSale || product.isSale) && (
+            <span className="px-2.5 py-1 bg-red-600 text-white text-[10px] sm:text-[11px] font-black rounded-lg uppercase tracking-wide shadow-lg border border-red-500/50">
+              Sale
             </span>
-          ))}
+          )}
         </div>
-      )}
+
+        {/* Right Side: Dynamic Platform Badges (PS4, PS5, XBOX...) + Dynamic NEW / OLD Tag */}
+        <div className="flex items-center gap-1 flex-wrap justify-end pointer-events-auto max-w-[75%]">
+          {platforms.map((platform) => {
+            const badgeStyle = getPlatformBadgeStyle(platform);
+            const label = formatPlatformLabel(platform);
+            if (!label) return null;
+            return (
+              <span
+                key={platform}
+                className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-black rounded-md uppercase tracking-wider shadow-md transition-transform hover:scale-105 ${badgeStyle}`}
+              >
+                {label}
+              </span>
+            );
+          })}
+
+          {conditionTag && (
+            <span
+              className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-black rounded-md uppercase tracking-wider shadow-md transition-transform hover:scale-105 ${conditionTag.className}`}
+            >
+              {conditionTag.label}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="store-product-card__overlay">
         <h3 className="text-xs sm:text-sm font-bold text-white leading-tight line-clamp-2">

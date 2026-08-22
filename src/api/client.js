@@ -154,6 +154,8 @@ export const api = {
       return request(`/orders?${query}`);
     },
     getById: async (id) => request(`/orders/${id}`),
+    update: async (id, orderData) =>
+      request(`/orders/${id}`, { method: 'PUT', body: orderData }),
     updateStatus: async (id, statusData) =>
       request(`/orders/${id}`, { method: 'PUT', body: statusData }),
     delete: async (id) => request(`/orders/${id}`, { method: 'DELETE' }),
@@ -169,6 +171,8 @@ export const api = {
     getById: async (id) => request(`/customers/${id}`),
     toggleStatus: async (id, isActive) =>
       request(`/customers/${id}/status`, { method: 'PUT', body: { isActive } }),
+    updateNotes: async (id, adminNotes) =>
+      request(`/customers/${id}/notes`, { method: 'PUT', body: { adminNotes } }),
     delete: async (id) => request(`/customers/${id}`, { method: 'DELETE' }),
   },
 

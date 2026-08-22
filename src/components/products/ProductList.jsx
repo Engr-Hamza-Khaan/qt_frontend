@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { getMediaUrl, getProductImage } from '../../store/utils';
@@ -103,19 +103,94 @@ function ProductList() {
     fetchData();
   }, []);
 
-  // Filtered Products
-  const filteredProducts = products.filter(p => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = !term ||
-                          p.title.toLowerCase().includes(term) || 
-                          (p.modelNumber && p.modelNumber.toLowerCase().includes(term)) ||
-                          (Array.isArray(p.aliases) && p.aliases.some(a => a.toLowerCase().includes(term))) ||
-                          (Array.isArray(p.keywords) && p.keywords.some(k => k.toLowerCase().includes(term))) ||
-                          (Array.isArray(p.tags) && p.tags.some(t => t.toLowerCase().includes(term)));
-    const matchesCategory = selectedCategory ? String(p.categoryId) === String(selectedCategory) : true;
-    const matchesCondition = selectedCondition ? p.condition === selectedCondition : true;
-    return matchesSearch && matchesCategory && matchesCondition;
-  });
+  // Filtered Products - Multi-column comprehensive search across all table fields & keywords
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const trimmedSearch = searchTerm.trim().toLowerCase();
+
+      // Dropdown filters
+      const matchesCategory = selectedCategory ? String(p.categoryId) === String(selectedCategory) : true;
+      const matchesConditionFilter = selectedCondition ? p.condition === selectedCondition : true;
+
+      if (!matchesCategory || !matchesConditionFilter) return false;
+      if (!trimmedSearch) return true;
+
+      // Tokenize search query for multi-word cross-column searches (e.g. "PS5 New Retro")
+      const terms = trimmedSearch.split(/\s+/).filter(Boolean);
+
+      return terms.every(term => {
+        // 1. PRODUCT INFO COLUMN (Title, Model Number, Aliases, Keywords, Tags, Description, ID)
+        if (p.title?.toLowerCase().includes(term)) return true;
+        if (p.modelNumber?.toLowerCase().includes(term)) return true;
+        if (p.description?.toLowerCase().includes(term)) return true;
+        if (String(p.id).toLowerCase().includes(term)) return true;
+        if (Array.isArray(p.aliases) && p.aliases.some(a => String(a).toLowerCase().includes(term))) return true;
+        if (Array.isArray(p.keywords) && p.keywords.some(k => String(k).toLowerCase().includes(term))) return true;
+        if (Array.isArray(p.tags) && p.tags.some(t => String(t).toLowerCase().includes(term))) return true;
+
+        // 2. CONDITION COLUMN (New, Used, Brand New, Pre-Owned)
+        if (p.condition?.toLowerCase().includes(term)) return true;
+        if ((term === 'new' || term === 'brand new') && p.condition === 'New') return true;
+        if ((term === 'used' || term === 'pre-owned' || term === 'preowned') && (p.condition === 'Used' || p.condition === 'Pre-Owned')) return true;
+
+        // 3. CATEGORY COLUMN (Name, Category Platform, Description)
+        if (p.category?.name?.toLowerCase().includes(term)) return true;
+        if (p.category?.platform?.toLowerCase().includes(term)) return true;
+        if (p.category?.description?.toLowerCase().includes(term)) return true;
+
+        // 4. SUPPLIER / VENDOR COLUMN (Company Name, Contact Name, Email, Phone, "Store / No Supplier")
+        if (p.vendor?.companyName?.toLowerCase().includes(term)) return true;
+        if (p.vendor?.name?.toLowerCase().includes(term)) return true;
+        if (p.vendor?.email?.toLowerCase().includes(term)) return true;
+        if (!p.vendor && ('store (no supplier)'.includes(term) || 'no supplier'.includes(term) || 'store'.includes(term) || 'supplier'.includes(term))) return true;
+
+        // 5. PLATFORM COLUMN (Product Attributes Platform, Category Platform)
+        if (p.attributes?.platform?.toLowerCase().includes(term)) return true;
+        if (p.platform?.toLowerCase().includes(term)) return true;
+
+        // 6. SKUs / VARIATIONS COLUMN (SKU, Platform, Condition, Color, Storage, Edition, Bundle, Price, Variation Count)
+        const varCountStr = `${p.variations?.length || 0} variations`;
+        if (varCountStr.includes(term) || `${p.variations?.length || 0} skus`.includes(term)) return true;
+        if (Array.isArray(p.variations) && p.variations.some(v => {
+          if (!v) return false;
+          if (v.sku?.toLowerCase().includes(term)) return true;
+          if (v.platform?.toLowerCase().includes(term)) return true;
+          if (v.condition?.toLowerCase().includes(term)) return true;
+          if (v.color?.toLowerCase().includes(term)) return true;
+          if (v.storage?.toLowerCase().includes(term)) return true;
+          if (v.edition?.toLowerCase().includes(term)) return true;
+          if (v.bundle?.toLowerCase().includes(term)) return true;
+          if (v.price !== undefined && String(v.price).includes(term)) return true;
+          if (v.costPrice !== undefined && String(v.costPrice).includes(term)) return true;
+          return false;
+        })) return true;
+
+        // 7. STATUS COLUMN (Published, Draft, Archived, Featured, Best Seller, Flash Sale)
+        if (p.status?.toLowerCase().includes(term)) return true;
+        if (p.isFeatured && 'featured'.includes(term)) return true;
+        if (p.isBestSeller && ('bestseller'.includes(term) || 'best seller'.includes(term))) return true;
+        if (p.isFlashSale && ('flash sale'.includes(term) || 'flashsale'.includes(term))) return true;
+
+        // 8. GENERAL ATTRIBUTES & SPECIFICATIONS (Dynamic JSON Key-Value pairs)
+        if (p.attributes && typeof p.attributes === 'object') {
+          for (const [key, val] of Object.entries(p.attributes)) {
+            if (key.toLowerCase().includes(term)) return true;
+            if (val && String(val).toLowerCase().includes(term)) return true;
+          }
+        }
+
+        if (p.specifications && typeof p.specifications === 'object') {
+          for (const [key, val] of Object.entries(p.specifications)) {
+            if (key.toLowerCase().includes(term)) return true;
+            if (val && String(val).toLowerCase().includes(term)) return true;
+          }
+        }
+
+        return false;
+      });
+    });
+  }, [products, searchTerm, selectedCategory, selectedCondition]);
+
 
   const clearPendingImages = () => {
     setPendingImages((prev) => {
@@ -525,11 +600,21 @@ function ProductList() {
           </div>
           <input
             type="text"
-            placeholder="Search by product name or model number..."
+            placeholder="Search all columns (Product, SKU, Model, Category, Supplier, Platform, Status...)"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+            className="block w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              title="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
