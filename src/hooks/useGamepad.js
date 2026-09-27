@@ -5,7 +5,18 @@ const CALIBRATION_KEY = 'qt_controller_calibration';
 function loadCalibration() {
   try {
     const raw = localStorage.getItem(CALIBRATION_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Validate that it doesn't have stale dummy offsets
+      if (
+        parsed?.centerOffset?.left?.x === -0.647 ||
+        parsed?.centerOffset?.right?.x === -0.647
+      ) {
+        localStorage.removeItem(CALIBRATION_KEY);
+      } else {
+        return parsed;
+      }
+    }
   } catch (err) {
     console.error('Failed to load calibration:', err);
   }
@@ -24,29 +35,29 @@ function loadCalibration() {
 
 export function detectGamepadDetails(id = '') {
   const lower = id.toLowerCase();
-  
+
   // PS5 DualSense detection
   if (lower.includes('dualsense') || (lower.includes('054c') && lower.includes('0ce6')) || lower.includes('ps5')) {
     return {
       brand: 'playstation',
       modelType: 'ps5',
-      name: 'PS5 DualSense Controller',
-      displayName: 'PS5 DualSense Controller',
+      name: 'PS5 Dualsense Controller',
+      displayName: 'PS5 Dualsense Controller',
       fullId: id || 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)'
     };
   }
-  
+
   // PS4 DualShock detection
   if (lower.includes('dualshock') || (lower.includes('054c') && (lower.includes('05c4') || lower.includes('09cc'))) || lower.includes('ps4')) {
     return {
       brand: 'playstation',
       modelType: 'ps4',
-      name: 'PS4 DualShock Controller',
-      displayName: 'PS4 DualShock Controller',
+      name: 'PS4 Dualshock Controller',
+      displayName: 'PS4 Dualshock Controller',
       fullId: id || 'DualShock 4 Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 05c4)'
     };
   }
-  
+
   // Xbox detection
   if (lower.includes('xbox') || lower.includes('045e') || lower.includes('xinput')) {
     return {
@@ -57,14 +68,14 @@ export function detectGamepadDetails(id = '') {
       fullId: id || 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 02fd)'
     };
   }
-  
-  // Generic or PlayStation-like fallback
-  if (lower.includes('playstation') || lower.includes('sony')) {
+
+  // Fallback for PlayStation or Generic
+  if (lower.includes('playstation') || lower.includes('sony') || lower.includes('wireless controller')) {
     return {
       brand: 'playstation',
       modelType: 'ps5',
-      name: 'PS5 DualSense Controller',
-      displayName: 'PS5 DualSense Controller',
+      name: 'PS5 Dualsense Controller',
+      displayName: 'PS5 Dualsense Controller',
       fullId: id || 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)'
     };
   }
@@ -74,7 +85,7 @@ export function detectGamepadDetails(id = '') {
     modelType: 'generic',
     name: 'Game Controller',
     displayName: id ? id.split('(')[0].trim() : 'Game Controller',
-    fullId: id || 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)'
+    fullId: id || 'Standard Gamepad Controller'
   };
 }
 
@@ -82,11 +93,13 @@ function snapshotGamepad(gamepad, calibration) {
   if (!gamepad) return null;
 
   const rawAxes = [...gamepad.axes];
+  const cOffset = calibration?.centerOffset || { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
+
   // Apply calibration offsets
-  const leftX = (rawAxes[0] ?? 0) - (calibration?.centerOffset?.left?.x ?? 0);
-  const leftY = (rawAxes[1] ?? 0) - (calibration?.centerOffset?.left?.y ?? 0);
-  const rightX = (rawAxes[2] ?? 0) - (calibration?.centerOffset?.right?.x ?? 0);
-  const rightY = (rawAxes[3] ?? 0) - (calibration?.centerOffset?.right?.y ?? 0);
+  const leftX = (rawAxes[0] ?? 0) - (cOffset.left?.x ?? 0);
+  const leftY = (rawAxes[1] ?? 0) - (cOffset.left?.y ?? 0);
+  const rightX = (rawAxes[2] ?? 0) - (cOffset.right?.x ?? 0);
+  const rightY = (rawAxes[3] ?? 0) - (cOffset.right?.y ?? 0);
 
   const clamp = (v) => Math.max(-1, Math.min(1, v));
 
@@ -113,75 +126,78 @@ function snapshotGamepad(gamepad, calibration) {
 }
 
 function getConnectedGamepads() {
-  return [...(navigator.getGamepads?.() ?? [])].filter(Boolean);
+  if (typeof navigator === 'undefined' || !navigator.getGamepads) return [];
+  return [...navigator.getGamepads()].filter(Boolean);
 }
 
 export function useGamepad() {
   const [gamepads, setGamepads] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [calibration, setCalibration] = useState(loadCalibration);
-  const [isSimulated, setIsSimulated] = useState(false);
-  const [simulatedBrand, setSimulatedBrand] = useState('playstation'); // 'playstation' or 'xbox'
-  const [simulatedState, setSimulatedState] = useState(() => ({
-    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })),
-    axes: [-0.647, -0.176, -0.647, -0.176]
-  }));
 
   const rafRef = useRef(null);
   const calibrationRef = useRef(calibration);
   calibrationRef.current = calibration;
 
-  // Poll real gamepads
+  // Poll real gamepads on animation frame
   useEffect(() => {
-    const syncConnected = () => {
-      const connected = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current));
-      setGamepads(connected);
-      setActiveIndex((prev) => {
-        if (connected.length === 0) return 0;
-        if (connected.some((gp) => gp.index === prev)) return prev;
-        return connected[0].index;
-      });
-    };
+    let prevFingerprint = '';
 
     const poll = () => {
-      const connected = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current));
-      setGamepads(connected);
+      const connectedRaw = getConnectedGamepads();
+
+      if (connectedRaw.length > 0) {
+        // Fast fingerprint to avoid React re-render when nothing changed
+        let fp = '';
+        for (let i = 0; i < connectedRaw.length; i++) {
+          const gp = connectedRaw[i];
+          fp += `${gp.index}:${gp.buttons.map((b) => `${b.pressed ? 1 : 0}:${b.value.toFixed(2)}`).join(',')}:`;
+          fp += `${gp.axes.map((a) => a.toFixed(3)).join(',')};`;
+        }
+
+        if (fp !== prevFingerprint) {
+          prevFingerprint = fp;
+          const snapshots = connectedRaw.map((gp) => snapshotGamepad(gp, calibrationRef.current));
+          setGamepads(snapshots);
+        }
+      } else if (prevFingerprint !== 'empty') {
+        prevFingerprint = 'empty';
+        setGamepads([]);
+      }
+
       rafRef.current = requestAnimationFrame(poll);
     };
 
-    window.addEventListener('gamepadconnected', syncConnected);
-    window.addEventListener('gamepaddisconnected', syncConnected);
-    syncConnected();
+    const onConnected = (e) => {
+      console.log('Gamepad connected:', e.gamepad.id);
+      prevFingerprint = '';
+      const snapshots = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current));
+      setGamepads(snapshots);
+      setActiveIndex(e.gamepad.index);
+    };
+
+    const onDisconnected = (e) => {
+      console.log('Gamepad disconnected:', e.gamepad.id);
+      prevFingerprint = '';
+      const snapshots = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current));
+      setGamepads(snapshots);
+    };
+
+    window.addEventListener('gamepadconnected', onConnected);
+    window.addEventListener('gamepaddisconnected', onDisconnected);
+
     rafRef.current = requestAnimationFrame(poll);
 
     return () => {
-      window.removeEventListener('gamepadconnected', syncConnected);
-      window.removeEventListener('gamepaddisconnected', syncConnected);
+      window.removeEventListener('gamepadconnected', onConnected);
+      window.removeEventListener('gamepaddisconnected', onDisconnected);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
-  const realActiveGamepad = gamepads.find((gp) => gp.index === activeIndex) ?? gamepads[0] ?? null;
+  const activeGamepad = gamepads.find((gp) => gp.index === activeIndex) ?? gamepads[0] ?? null;
 
-  // When simulated or in preview mode, construct fallback gamepad snapshot
-  const activeGamepad = realActiveGamepad || (isSimulated ? {
-    index: 0,
-    id: simulatedBrand === 'xbox' 
-      ? 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 02fd)' 
-      : 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)',
-    mapping: 'standard',
-    connected: true,
-    buttons: simulatedState.buttons,
-    axes: simulatedState.axes,
-    rawAxes: simulatedState.axes,
-    details: detectGamepadDetails(
-      simulatedBrand === 'xbox' 
-        ? 'Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 02fd)' 
-        : 'DualSense Wireless Controller (STANDARD GAMEPAD Vendor: 054c Product: 0ce6)'
-    )
-  } : null);
-
-  // Trigger vibration / haptic rumble
+  // Trigger vibration / haptic rumble on physical controller
   const triggerHaptic = useCallback((duration = 400, weakMagnitude = 1.0, strongMagnitude = 1.0) => {
     try {
       const connected = getConnectedGamepads();
@@ -250,42 +266,18 @@ export function useGamepad() {
     }
   }, []);
 
-  // Simulator controls
-  const setSimulatedButton = useCallback((buttonIndex, pressed, value = pressed ? 1 : 0) => {
-    setSimulatedState((prev) => {
-      const nextButtons = [...prev.buttons];
-      nextButtons[buttonIndex] = { pressed, value };
-      return { ...prev, buttons: nextButtons };
-    });
-  }, []);
-
-  const setSimulatedAxis = useCallback((axisIndex, val) => {
-    setSimulatedState((prev) => {
-      const nextAxes = [...prev.axes];
-      nextAxes[axisIndex] = val;
-      return { ...prev, axes: nextAxes };
-    });
-  }, []);
-
   return {
     gamepads,
     activeGamepad,
     activeIndex,
     setActiveIndex,
     hasConnectedController: gamepads.length > 0,
-    isSupported: typeof navigator.getGamepads === 'function',
+    isSupported: typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function',
     triggerHaptic,
     calibration,
     calibrateCenter,
     calibrateRange,
     saveCalibrationPermanently,
-    resetCalibration,
-    isSimulated,
-    setIsSimulated,
-    simulatedBrand,
-    setSimulatedBrand,
-    setSimulatedButton,
-    setSimulatedAxis,
-    simulatedState
+    resetCalibration
   };
 }

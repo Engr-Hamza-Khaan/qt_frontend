@@ -15,12 +15,7 @@ export default function ControllerTesterPage() {
     triggerHaptic,
     calibrateCenter,
     calibrateRange,
-    saveCalibrationPermanently,
-    isSimulated,
-    setIsSimulated,
-    setSimulatedBrand,
-    setSimulatedButton,
-    setSimulatedAxis
+    saveCalibrationPermanently
   } = useGamepad();
 
   // Active view: 'tester' or 'calibration'
@@ -29,86 +24,36 @@ export default function ControllerTesterPage() {
   // Active selected brand tab: 'playstation' or 'xbox'
   const [selectedBrand, setSelectedBrand] = useState('playstation');
 
-  // Preview mode for users testing without hardware
+  // Preview mode toggle if user wants to inspect layout without hardware plugged in
   const [isPreviewActive, setIsPreviewActive] = useState(false);
 
-  // Auto-sync brand when a physical controller connects
+  // Auto-sync brand ONLY when a physical controller connects or changes device ID
   useEffect(() => {
     if (activeGamepad?.details?.brand) {
       setSelectedBrand(activeGamepad.details.brand);
     }
-  }, [activeGamepad]);
+  }, [activeGamepad?.details?.brand, activeGamepad?.id]);
 
   // Handle switching tabs
   const handleSelectTab = (brand) => {
     setSelectedBrand(brand);
     setIsPreviewActive(true);
-    setIsSimulated(true);
-    setSimulatedBrand(brand);
   };
 
-  // Keyboard shortcut listener for simulator testing
-  useEffect(() => {
-    if (!isPreviewActive && !hasConnectedController) return;
-
-    const handleKeyDown = (e) => {
-      // WASD for Left Stick
-      if (e.key === 'w' || e.key === 'W') setSimulatedAxis(1, -0.85);
-      if (e.key === 's' || e.key === 'S') setSimulatedAxis(1, 0.85);
-      if (e.key === 'a' || e.key === 'A') setSimulatedAxis(0, -0.85);
-      if (e.key === 'd' || e.key === 'D') setSimulatedAxis(0, 0.85);
-
-      // Arrow keys for Right Stick
-      if (e.key === 'ArrowUp') setSimulatedAxis(3, -0.85);
-      if (e.key === 'ArrowDown') setSimulatedAxis(3, 0.85);
-      if (e.key === 'ArrowLeft') setSimulatedAxis(2, -0.85);
-      if (e.key === 'ArrowRight') setSimulatedAxis(2, 0.85);
-
-      // Buttons
-      if (e.key === '1') setSimulatedButton(0, true, 1);
-      if (e.key === '2') setSimulatedButton(1, true, 1);
-      if (e.key === '3') setSimulatedButton(2, true, 1);
-      if (e.key === '4') setSimulatedButton(3, true, 1);
-      if (e.key === 'q' || e.key === 'Q') setSimulatedButton(6, true, 1);
-      if (e.key === 'e' || e.key === 'E') setSimulatedButton(7, true, 1);
-    };
-
-    const handleKeyUp = (e) => {
-      if (['w', 's', 'W', 'S'].includes(e.key)) setSimulatedAxis(1, -0.176);
-      if (['a', 'd', 'A', 'D'].includes(e.key)) setSimulatedAxis(0, -0.647);
-      if (['ArrowUp', 'ArrowDown'].includes(e.key)) setSimulatedAxis(3, -0.176);
-      if (['ArrowLeft', 'ArrowRight'].includes(e.key)) setSimulatedAxis(2, -0.647);
-
-      if (e.key === '1') setSimulatedButton(0, false, 0);
-      if (e.key === '2') setSimulatedButton(1, false, 0);
-      if (e.key === '3') setSimulatedButton(2, false, 0);
-      if (e.key === '4') setSimulatedButton(3, false, 0);
-      if (e.key === 'q' || e.key === 'Q') setSimulatedButton(6, false, 0);
-      if (e.key === 'e' || e.key === 'E') setSimulatedButton(7, false, 0);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [isPreviewActive, hasConnectedController, setSimulatedAxis, setSimulatedButton]);
-
-  // Determine dynamic live input label:
+  // Determine dynamic live input label matching exact specifications:
   // "Jab (Ps5 Dualsense) Controller Connect Ho Tou Text Ps5 Ana Chayei Waise Hi Jab (Ps4 Dualshock) Ho Tab Ps4 And Jab Xbox Ho Tab (Xbox Controller)"
   const getLiveInputLabel = () => {
     if (activeGamepad?.details?.modelType === 'ps5') {
-      return 'LIVE INPUT: PS5 DualSense Controller';
+      return 'LIVE INPUT: PS5 Dualsense Controller';
     }
     if (activeGamepad?.details?.modelType === 'ps4') {
-      return 'LIVE INPUT: PS4 DualShock Controller';
+      return 'LIVE INPUT: PS4 Dualshock Controller';
     }
     if (activeGamepad?.details?.modelType === 'xbox' || selectedBrand === 'xbox') {
       return 'LIVE INPUT: Xbox Controller';
     }
     if (selectedBrand === 'playstation') {
-      return 'LIVE INPUT: PS5 DualSense Controller';
+      return 'LIVE INPUT: PS5 Dualsense Controller';
     }
     return 'LIVE INPUT';
   };
@@ -130,7 +75,6 @@ export default function ControllerTesterPage() {
           onCalibrateRange={calibrateRange}
           onTriggerHaptic={triggerHaptic}
           onSavePermanent={saveCalibrationPermanently}
-          onSimulateAxis={setSimulatedAxis}
         />
       ) : (
         <>
@@ -143,11 +87,7 @@ export default function ControllerTesterPage() {
           {/* If No Controller Detected and not previewing: Show Landing Page */}
           {!showActiveControllerUI ? (
             <NoControllerLanding
-              onStartDemo={() => {
-                setIsPreviewActive(true);
-                setIsSimulated(true);
-                setSimulatedBrand(selectedBrand);
-              }}
+              onStartDemo={() => setIsPreviewActive(true)}
             />
           ) : (
             /* Main Live Input Glass Panel */
@@ -157,16 +97,12 @@ export default function ControllerTesterPage() {
                   gamepad={activeGamepad}
                   liveInputLabel={getLiveInputLabel()}
                   onCalibrateClick={() => setCurrentView('calibration')}
-                  onSimulateButton={setSimulatedButton}
-                  onSimulateAxis={setSimulatedAxis}
                 />
               ) : (
                 <PlayStationLayout
                   gamepad={activeGamepad}
                   liveInputLabel={getLiveInputLabel()}
                   onCalibrateClick={() => setCurrentView('calibration')}
-                  onSimulateButton={setSimulatedButton}
-                  onSimulateAxis={setSimulatedAxis}
                 />
               )}
             </div>

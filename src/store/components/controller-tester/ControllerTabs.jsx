@@ -1,5 +1,4 @@
 import React from 'react';
-import { PlayStationLogo, XboxLogo } from './ControllerLogos';
 
 export default function ControllerTabs({ activeTab, onSelectTab }) {
   return (
@@ -15,7 +14,11 @@ export default function ControllerTabs({ activeTab, onSelectTab }) {
               : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
           }`}
         >
-          <PlayStationLogo className="w-4 h-4" />
+          <img
+            src="/Icons/Console Outline.png"
+            alt="Playstation"
+            className="w-4 h-4 object-contain"
+          />
           <span>Playstation</span>
         </button>
 
@@ -29,7 +32,11 @@ export default function ControllerTabs({ activeTab, onSelectTab }) {
               : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
           }`}
         >
-          <XboxLogo className="w-4 h-4" />
+          <img
+            src="/Icons/xbox-outline.png"
+            alt="Xbox"
+            className="w-4 h-4 object-contain brightness-0 invert"
+          />
           <span>Xbox</span>
         </button>
       </div>

@@ -10,8 +10,7 @@ export default function CalibrationView({
   onCalibrateCenter,
   onCalibrateRange,
   onTriggerHaptic,
-  onSavePermanent,
-  onSimulateAxis
+  onSavePermanent
 }) {
   const [feedbackMsg, setFeedbackMsg] = useState(null);
   const [isVibrating, setIsVibrating] = useState(false);
@@ -98,10 +97,6 @@ export default function CalibrationView({
                 x={axes[0] ?? 0}
                 y={axes[1] ?? 0}
                 size={115}
-                onChange={(nx, ny) => {
-                  onSimulateAxis?.(0, nx);
-                  onSimulateAxis?.(1, ny);
-                }}
               />
 
               <AnalogStickRadar
@@ -109,10 +104,6 @@ export default function CalibrationView({
                 x={axes[2] ?? 0}
                 y={axes[3] ?? 0}
                 size={115}
-                onChange={(nx, ny) => {
-                  onSimulateAxis?.(2, nx);
-                  onSimulateAxis?.(3, ny);
-                }}
               />
             </div>
 

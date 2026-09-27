@@ -21,7 +21,7 @@ export default function NoControllerLanding({ onStartDemo }) {
         </p>
 
         {/* Interactive Preview Trigger */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        {/* <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"
             onClick={onStartDemo}
@@ -30,7 +30,7 @@ export default function NoControllerLanding({ onStartDemo }) {
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Preview & Test Controller Layouts</span>
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Repair CTA Card */}

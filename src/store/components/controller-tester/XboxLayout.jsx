@@ -2,7 +2,7 @@ import React from 'react';
 import { Target } from 'lucide-react';
 import AnalogStickRadar from './AnalogStickRadar';
 import TriggerMeter from './TriggerMeter';
-import { XboxLogo, ViewWindowsIcon, MenuHamburgerIcon } from './ControllerLogos';
+import { ViewWindowsIcon, MenuHamburgerIcon } from './ControllerLogos';
 
 function getBtn(gamepad, index) {
   return gamepad?.buttons?.[index] ?? { pressed: false, value: 0 };
@@ -10,10 +10,8 @@ function getBtn(gamepad, index) {
 
 export default function XboxLayout({
   gamepad,
-  liveInputLabel = 'LIVE INPUT',
-  onCalibrateClick,
-  onSimulateButton,
-  onSimulateAxis
+  liveInputLabel = 'LIVE INPUT: Xbox Controller',
+  onCalibrateClick
 }) {
   const axes = gamepad?.axes ?? [0, 0, 0, 0];
 
@@ -38,20 +36,20 @@ export default function XboxLayout({
   const btnMenu = getBtn(gamepad, 9);
   const btnGuide = getBtn(gamepad, 16);
 
-  const isBtnActive = (btn) => btn.pressed || btn.value > 0.1;
+  const isBtnActive = (btn) => btn?.pressed || (btn?.value ?? 0) > 0.1;
 
   return (
     <div className="w-full">
       {/* Top Header Row with LIVE INPUT and Triggers */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10 mb-8">
         <div className="flex items-center gap-2">
-          <span className="text-xs sm:text-sm font-bold text-gray-200 uppercase tracking-wider">
+          <span className="text-sm sm:text-base font-bold text-gray-200 tracking-wide">
             {liveInputLabel}
           </span>
         </div>
 
         {/* Triggers Readout */}
-        <div className="flex items-center gap-4 sm:gap-8 justify-between sm:justify-end">
+        <div className="flex items-center gap-6 sm:gap-12 justify-between sm:justify-end">
           <TriggerMeter label="LT" value={lt.value} variant="xbox" />
           <TriggerMeter label="RT" value={rt.value} variant="xbox" />
         </div>
@@ -61,29 +59,25 @@ export default function XboxLayout({
       <div className="max-w-2xl mx-auto space-y-8">
         {/* LB & RB Bumpers Row */}
         <div className="flex justify-between items-center px-4 sm:px-12">
-          <button
-            type="button"
-            onClick={() => onSimulateButton?.(4, !lb.pressed)}
-            className={`px-8 py-2 rounded-full text-xs font-bold border transition-all duration-150 ${
+          <div
+            className={`px-8 py-2 rounded-full text-xs font-bold border transition-all duration-150 select-none ${
               isBtnActive(lb)
                 ? 'bg-[#107c10] border-emerald-400 text-white shadow-[0_0_15px_rgba(16,124,16,0.8)] scale-105'
-                : 'bg-white/5 border-white/20 text-gray-300 hover:border-white/40'
+                : 'bg-white/5 border-white/20 text-gray-300'
             }`}
           >
             LB
-          </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => onSimulateButton?.(5, !rb.pressed)}
-            className={`px-8 py-2 rounded-full text-xs font-bold border transition-all duration-150 ${
+          <div
+            className={`px-8 py-2 rounded-full text-xs font-bold border transition-all duration-150 select-none ${
               isBtnActive(rb)
                 ? 'bg-[#107c10] border-emerald-400 text-white shadow-[0_0_15px_rgba(16,124,16,0.8)] scale-105'
-                : 'bg-white/5 border-white/20 text-gray-300 hover:border-white/40'
+                : 'bg-white/5 border-white/20 text-gray-300'
             }`}
           >
             RB
-          </button>
+          </div>
         </div>
 
         {/* Main Grid: Left Stick + L3 + Dpad | Center Xbox buttons | Right Stick + R3 + Action Buttons */}
@@ -95,118 +89,101 @@ export default function XboxLayout({
               x={axes[0] ?? 0}
               y={axes[1] ?? 0}
               isPressed={isBtnActive(l3)}
-              onPress={() => onSimulateButton?.(10, !l3.pressed)}
-              onChange={(nx, ny) => {
-                onSimulateAxis?.(0, nx);
-                onSimulateAxis?.(1, ny);
-              }}
             />
 
-            <button
-              type="button"
-              onClick={() => onSimulateButton?.(10, !l3.pressed)}
-              className={`px-6 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 ${
+            <div
+              className={`px-6 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 select-none ${
                 isBtnActive(l3)
                   ? 'bg-[#107c10] border-emerald-400 text-white shadow-[0_0_15px_rgba(16,124,16,0.8)]'
-                  : 'bg-white/5 border-white/20 text-gray-300 hover:border-white/40'
+                  : 'bg-white/5 border-white/20 text-gray-300'
               }`}
             >
               L3
-            </button>
+            </div>
 
             {/* D-Pad */}
             <div className="relative w-24 h-24 flex items-center justify-center mt-1">
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(12, !dpadUp.pressed)}
+              <div
                 className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-8 rounded-md flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(dpadUp)
                     ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                    : 'bg-white/5 border-white/20 text-gray-400 hover:text-white'
+                    : 'bg-white/5 border-white/20 text-gray-400'
                 }`}
               >
                 ▲
-              </button>
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(14, !dpadLeft.pressed)}
+              </div>
+              <div
                 className={`absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(dpadLeft)
                     ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                    : 'bg-white/5 border-white/20 text-gray-400 hover:text-white'
+                    : 'bg-white/5 border-white/20 text-gray-400'
                 }`}
               >
                 ◀
-              </button>
+              </div>
               <div className="w-7 h-7 rounded-sm bg-white/5 border border-white/10" />
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(15, !dpadRight.pressed)}
+              <div
                 className={`absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(dpadRight)
                     ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                    : 'bg-white/5 border-white/20 text-gray-400 hover:text-white'
+                    : 'bg-white/5 border-white/20 text-gray-400'
                 }`}
               >
                 ▶
-              </button>
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(13, !dpadDown.pressed)}
+              </div>
+              <div
                 className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-8 rounded-md flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(dpadDown)
                     ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                    : 'bg-white/5 border-white/20 text-gray-400 hover:text-white'
+                    : 'bg-white/5 border-white/20 text-gray-400'
                 }`}
               >
                 ▼
-              </button>
+              </div>
             </div>
           </div>
 
           {/* Center Column: Xbox Guide Button + View + Menu */}
           <div className="flex flex-col items-center justify-center gap-5">
             {/* Xbox Guide Button (Large glowing circle) */}
-            <button
-              type="button"
-              onClick={() => onSimulateButton?.(16, !btnGuide.pressed)}
+            <div
               className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all duration-200 ${
                 isBtnActive(btnGuide)
                   ? 'bg-emerald-500 border-white text-black shadow-[0_0_25px_rgba(16,185,129,0.9)] scale-110'
-                  : 'bg-white/10 border-white/30 text-white hover:border-emerald-400 hover:text-emerald-400'
+                  : 'bg-white/10 border-white/30 text-white'
               }`}
               title="Xbox Guide"
             >
-              <XboxLogo className="w-8 h-8" />
-            </button>
+              <img
+                src="/Icons/xbox-outline.png"
+                alt="Xbox Guide"
+                className="w-8 h-8 object-contain brightness-0 invert"
+              />
+            </div>
 
             {/* View Button (Overlapping squares) */}
-            <button
-              type="button"
-              onClick={() => onSimulateButton?.(8, !btnView.pressed)}
+            <div
               className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
                 isBtnActive(btnView)
                   ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.7)]'
-                  : 'bg-white/5 border-white/20 text-gray-400 hover:text-white'
+                  : 'bg-white/5 border-white/20 text-gray-400'
               }`}
               title="View Button"
             >
               <ViewWindowsIcon className="w-4 h-4" />
-            </button>
+            </div>
 
             {/* Menu Button (Hamburger) */}
-            <button
-              type="button"
-              onClick={() => onSimulateButton?.(9, !btnMenu.pressed)}
+            <div
               className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all ${
                 isBtnActive(btnMenu)
                   ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.7)]'
-                  : 'bg-white/5 border-white/20 text-gray-400 hover:text-white'
+                  : 'bg-white/5 border-white/20 text-gray-400'
               }`}
               title="Menu Button"
             >
               <MenuHamburgerIcon className="w-4 h-4" />
-            </button>
+            </div>
           </div>
 
           {/* Right Column: Right Stick, R3, Action Buttons (Y, X, B, A) */}
@@ -216,78 +193,63 @@ export default function XboxLayout({
               x={axes[2] ?? 0}
               y={axes[3] ?? 0}
               isPressed={isBtnActive(r3)}
-              onPress={() => onSimulateButton?.(11, !r3.pressed)}
-              onChange={(nx, ny) => {
-                onSimulateAxis?.(2, nx);
-                onSimulateAxis?.(3, ny);
-              }}
             />
 
-            <button
-              type="button"
-              onClick={() => onSimulateButton?.(11, !r3.pressed)}
-              className={`px-6 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 ${
+            <div
+              className={`px-6 py-1.5 rounded-full text-xs font-bold border transition-all duration-150 select-none ${
                 isBtnActive(r3)
                   ? 'bg-[#107c10] border-emerald-400 text-white shadow-[0_0_15px_rgba(16,124,16,0.8)]'
-                : 'bg-white/5 border-white/20 text-gray-300 hover:border-white/40'
+                  : 'bg-white/5 border-white/20 text-gray-300'
               }`}
             >
               R3
-            </button>
+            </div>
 
             {/* Action Buttons (Y, X, B, A) */}
             <div className="relative w-24 h-24 flex items-center justify-center mt-1">
               {/* Y Button (Top - Yellow) */}
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(3, !btnY.pressed)}
+              <div
                 className={`absolute top-0 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(btnY)
                     ? 'bg-amber-400 border-amber-300 text-black shadow-[0_0_14px_rgba(251,191,36,0.9)] scale-110'
-                    : 'bg-white/5 border-white/20 text-amber-400 hover:border-amber-400/50'
+                    : 'bg-white/5 border-white/20 text-amber-400'
                 }`}
               >
                 Y
-              </button>
+              </div>
 
               {/* X Button (Left - Blue) */}
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(2, !btnX.pressed)}
+              <div
                 className={`absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(btnX)
                     ? 'bg-blue-500 border-blue-300 text-white shadow-[0_0_14px_rgba(59,130,246,0.9)] scale-110'
-                    : 'bg-white/5 border-white/20 text-blue-400 hover:border-blue-400/50'
+                    : 'bg-white/5 border-white/20 text-blue-400'
                 }`}
               >
                 X
-              </button>
+              </div>
 
               {/* B Button (Right - Red) */}
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(1, !btnB.pressed)}
+              <div
                 className={`absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(btnB)
                     ? 'bg-red-500 border-red-300 text-white shadow-[0_0_14px_rgba(239,68,68,0.9)] scale-110'
-                    : 'bg-white/5 border-white/20 text-red-400 hover:border-red-400/50'
+                    : 'bg-white/5 border-white/20 text-red-400'
                 }`}
               >
                 B
-              </button>
+              </div>
 
               {/* A Button (Bottom - Green) */}
-              <button
-                type="button"
-                onClick={() => onSimulateButton?.(0, !btnA.pressed)}
+              <div
                 className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center border text-xs font-bold transition-all ${
                   isBtnActive(btnA)
                     ? 'bg-emerald-500 border-emerald-300 text-white shadow-[0_0_14px_rgba(16,185,129,0.9)] scale-110'
-                    : 'bg-white/5 border-white/20 text-emerald-400 hover:border-emerald-400/50'
+                    : 'bg-white/5 border-white/20 text-emerald-400'
                 }`}
               >
                 A
-              </button>
+              </div>
             </div>
           </div>
         </div>
