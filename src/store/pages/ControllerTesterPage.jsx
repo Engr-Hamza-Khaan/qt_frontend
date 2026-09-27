@@ -1,117 +1,178 @@
-import { Link } from 'react-router-dom';
-import { Joystick, Plug, AlertCircle, Wrench } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useGamepad } from '../../hooks/useGamepad';
-import ControllerLayout from '../components/controller-tester/ControllerLayout';
-import ButtonGrid from '../components/controller-tester/ButtonGrid';
-import AxisReadout from '../components/controller-tester/AxisReadout';
+import ControllerHeader from '../components/controller-tester/ControllerHeader';
+import ControllerTabs from '../components/controller-tester/ControllerTabs';
+import PlayStationLayout from '../components/controller-tester/PlayStationLayout';
+import XboxLayout from '../components/controller-tester/XboxLayout';
+import CalibrationView from '../components/controller-tester/CalibrationView';
+import NoControllerLanding from '../components/controller-tester/NoControllerLanding';
 
-function ControllerTesterPage() {
-  const { gamepads, activeGamepad, activeIndex, setActiveIndex, isSupported } = useGamepad();
+export default function ControllerTesterPage() {
+  const {
+    gamepads,
+    activeGamepad,
+    hasConnectedController,
+    triggerHaptic,
+    calibrateCenter,
+    calibrateRange,
+    saveCalibrationPermanently,
+    isSimulated,
+    setIsSimulated,
+    setSimulatedBrand,
+    setSimulatedButton,
+    setSimulatedAxis
+  } = useGamepad();
+
+  // Active view: 'tester' or 'calibration'
+  const [currentView, setCurrentView] = useState('tester');
+
+  // Active selected brand tab: 'playstation' or 'xbox'
+  const [selectedBrand, setSelectedBrand] = useState('playstation');
+
+  // Preview mode for users testing without hardware
+  const [isPreviewActive, setIsPreviewActive] = useState(false);
+
+  // Auto-sync brand when a physical controller connects
+  useEffect(() => {
+    if (activeGamepad?.details?.brand) {
+      setSelectedBrand(activeGamepad.details.brand);
+    }
+  }, [activeGamepad]);
+
+  // Handle switching tabs
+  const handleSelectTab = (brand) => {
+    setSelectedBrand(brand);
+    setIsPreviewActive(true);
+    setIsSimulated(true);
+    setSimulatedBrand(brand);
+  };
+
+  // Keyboard shortcut listener for simulator testing
+  useEffect(() => {
+    if (!isPreviewActive && !hasConnectedController) return;
+
+    const handleKeyDown = (e) => {
+      // WASD for Left Stick
+      if (e.key === 'w' || e.key === 'W') setSimulatedAxis(1, -0.85);
+      if (e.key === 's' || e.key === 'S') setSimulatedAxis(1, 0.85);
+      if (e.key === 'a' || e.key === 'A') setSimulatedAxis(0, -0.85);
+      if (e.key === 'd' || e.key === 'D') setSimulatedAxis(0, 0.85);
+
+      // Arrow keys for Right Stick
+      if (e.key === 'ArrowUp') setSimulatedAxis(3, -0.85);
+      if (e.key === 'ArrowDown') setSimulatedAxis(3, 0.85);
+      if (e.key === 'ArrowLeft') setSimulatedAxis(2, -0.85);
+      if (e.key === 'ArrowRight') setSimulatedAxis(2, 0.85);
+
+      // Buttons
+      if (e.key === '1') setSimulatedButton(0, true, 1);
+      if (e.key === '2') setSimulatedButton(1, true, 1);
+      if (e.key === '3') setSimulatedButton(2, true, 1);
+      if (e.key === '4') setSimulatedButton(3, true, 1);
+      if (e.key === 'q' || e.key === 'Q') setSimulatedButton(6, true, 1);
+      if (e.key === 'e' || e.key === 'E') setSimulatedButton(7, true, 1);
+    };
+
+    const handleKeyUp = (e) => {
+      if (['w', 's', 'W', 'S'].includes(e.key)) setSimulatedAxis(1, -0.176);
+      if (['a', 'd', 'A', 'D'].includes(e.key)) setSimulatedAxis(0, -0.647);
+      if (['ArrowUp', 'ArrowDown'].includes(e.key)) setSimulatedAxis(3, -0.176);
+      if (['ArrowLeft', 'ArrowRight'].includes(e.key)) setSimulatedAxis(2, -0.647);
+
+      if (e.key === '1') setSimulatedButton(0, false, 0);
+      if (e.key === '2') setSimulatedButton(1, false, 0);
+      if (e.key === '3') setSimulatedButton(2, false, 0);
+      if (e.key === '4') setSimulatedButton(3, false, 0);
+      if (e.key === 'q' || e.key === 'Q') setSimulatedButton(6, false, 0);
+      if (e.key === 'e' || e.key === 'E') setSimulatedButton(7, false, 0);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isPreviewActive, hasConnectedController, setSimulatedAxis, setSimulatedButton]);
+
+  // Determine dynamic live input label:
+  // "Jab (Ps5 Dualsense) Controller Connect Ho Tou Text Ps5 Ana Chayei Waise Hi Jab (Ps4 Dualshock) Ho Tab Ps4 And Jab Xbox Ho Tab (Xbox Controller)"
+  const getLiveInputLabel = () => {
+    if (activeGamepad?.details?.modelType === 'ps5') {
+      return 'LIVE INPUT: PS5 DualSense Controller';
+    }
+    if (activeGamepad?.details?.modelType === 'ps4') {
+      return 'LIVE INPUT: PS4 DualShock Controller';
+    }
+    if (activeGamepad?.details?.modelType === 'xbox' || selectedBrand === 'xbox') {
+      return 'LIVE INPUT: Xbox Controller';
+    }
+    if (selectedBrand === 'playstation') {
+      return 'LIVE INPUT: PS5 DualSense Controller';
+    }
+    return 'LIVE INPUT';
+  };
+
+  const showActiveControllerUI = hasConnectedController || isPreviewActive;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-      <div className="flex items-center gap-3 mb-2">
-        <Joystick className="w-8 h-8 text-neon-purple" />
-        <h1 className="store-page-title">Controller Tester</h1>
-      </div>
-      <p className="store-muted mb-8">
-        Connect your gamepad via USB or Bluetooth and press any button to start testing.
-        Works with Xbox, PlayStation, and most PC controllers.
-      </p>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      {/* Top Header */}
+      <ControllerHeader />
 
-      {!isSupported && (
-        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex gap-3 text-sm text-red-400">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <p>Your browser does not support the Gamepad API. Try Chrome, Edge, or Firefox.</p>
-        </div>
-      )}
-
-      {gamepads.length === 0 ? (
-        <div className="store-glass-panel p-10 text-center">
-          <Plug className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-white mb-2">No Controller Detected</h2>
-          <p className="store-muted text-sm max-w-md mx-auto">
-            Plug in your controller or pair it via Bluetooth, then press any button.
-            Some browsers require a button press before the gamepad appears.
-          </p>
-        </div>
+      {/* Calibration Page View */}
+      {currentView === 'calibration' ? (
+        <CalibrationView
+          gamepad={activeGamepad}
+          brand={selectedBrand}
+          onBack={() => setCurrentView('tester')}
+          onCalibrateCenter={calibrateCenter}
+          onCalibrateRange={calibrateRange}
+          onTriggerHaptic={triggerHaptic}
+          onSavePermanent={saveCalibrationPermanently}
+          onSimulateAxis={setSimulatedAxis}
+        />
       ) : (
         <>
-          {/* Device selector */}
-          {gamepads.length > 1 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {gamepads.map((gp) => (
-                <button
-                  key={gp.index}
-                  type="button"
-                  onClick={() => setActiveIndex(gp.index)}
-                  className={`px-4 py-2 rounded-lg text-sm border transition ${
-                    gp.index === activeIndex
-                      ? 'bg-neon-purple/20 border-neon-purple/50 text-white'
-                      : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
-                  }`}
-                >
-                  Player {gp.index + 1}
-                </button>
-              ))}
+          {/* Brand Tabs Switcher (PlayStation / Xbox) */}
+          <ControllerTabs
+            activeTab={selectedBrand}
+            onSelectTab={handleSelectTab}
+          />
+
+          {/* If No Controller Detected and not previewing: Show Landing Page */}
+          {!showActiveControllerUI ? (
+            <NoControllerLanding
+              onStartDemo={() => {
+                setIsPreviewActive(true);
+                setIsSimulated(true);
+                setSimulatedBrand(selectedBrand);
+              }}
+            />
+          ) : (
+            /* Main Live Input Glass Panel */
+            <div className="store-glass-panel p-6 sm:p-8">
+              {selectedBrand === 'xbox' ? (
+                <XboxLayout
+                  gamepad={activeGamepad}
+                  liveInputLabel={getLiveInputLabel()}
+                  onCalibrateClick={() => setCurrentView('calibration')}
+                  onSimulateButton={setSimulatedButton}
+                  onSimulateAxis={setSimulatedAxis}
+                />
+              ) : (
+                <PlayStationLayout
+                  gamepad={activeGamepad}
+                  liveInputLabel={getLiveInputLabel()}
+                  onCalibrateClick={() => setCurrentView('calibration')}
+                  onSimulateButton={setSimulatedButton}
+                  onSimulateAxis={setSimulatedAxis}
+                />
+              )}
             </div>
           )}
-
-          {/* Device info */}
-          <div className="store-glass-panel p-4 mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            <div>
-              <span className="text-gray-500">Device: </span>
-              <span className="text-white font-medium">{activeGamepad?.id ?? 'Unknown'}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Mapping: </span>
-              <span className={`font-medium ${activeGamepad?.mapping === 'standard' ? 'text-green-400' : 'text-yellow-400'}`}>
-                {activeGamepad?.mapping || 'default'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500">Buttons: </span>
-              <span className="text-white">{activeGamepad?.buttons.length ?? 0}</span>
-            </div>
-            <div>
-              <span className="text-gray-500">Axes: </span>
-              <span className="text-white">{activeGamepad?.axes.length ?? 0}</span>
-            </div>
-          </div>
-
-          {/* Visual layout */}
-          <div className="store-glass-panel p-6 sm:p-8 mb-6">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-6">Live Input</h2>
-            <ControllerLayout gamepad={activeGamepad} />
-          </div>
-
-          {/* All buttons grid */}
-          <div className="store-glass-panel p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">All Buttons</h2>
-            <ButtonGrid gamepad={activeGamepad} />
-          </div>
-
-          {/* Axis readout */}
-          <div className="store-glass-panel p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Analog Axes</h2>
-            <AxisReadout gamepad={activeGamepad} />
-          </div>
         </>
       )}
-
-      {/* Repair CTA */}
-      <div className="mt-8 p-5 rounded-xl border border-neon-purple/20 bg-neon-purple/5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <Wrench className="w-6 h-6 text-neon-purple shrink-0" />
-        <div className="flex-1">
-          <p className="text-sm text-white font-medium">Found a problem with your controller?</p>
-          <p className="text-xs text-gray-400 mt-0.5">Drift, stuck buttons, or broken triggers — we can fix it.</p>
-        </div>
-        <Link to="/repair" className="store-btn-primary whitespace-nowrap px-5 py-2.5 text-sm">
-          Request Repair
-        </Link>
-      </div>
     </div>
   );
 }
-
-export default ControllerTesterPage;
