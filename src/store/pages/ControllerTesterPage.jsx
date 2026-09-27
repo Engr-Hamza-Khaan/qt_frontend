@@ -76,37 +76,33 @@ export default function ControllerTesterPage() {
           onTriggerHaptic={triggerHaptic}
           onSavePermanent={saveCalibrationPermanently}
         />
+      ) : !showActiveControllerUI ? (
+        /* If No Controller Detected: Show Landing Page (no tabs) */
+        <NoControllerLanding />
       ) : (
         <>
-          {/* Brand Tabs Switcher (PlayStation / Xbox) */}
+          {/* Brand Tabs Switcher (PlayStation / Xbox) - Only visible when controller is detected */}
           <ControllerTabs
             activeTab={selectedBrand}
             onSelectTab={handleSelectTab}
           />
 
-          {/* If No Controller Detected and not previewing: Show Landing Page */}
-          {!showActiveControllerUI ? (
-            <NoControllerLanding
-              onStartDemo={() => setIsPreviewActive(true)}
-            />
-          ) : (
-            /* Main Live Input Glass Panel */
-            <div className="store-glass-panel p-6 sm:p-8">
-              {selectedBrand === 'xbox' ? (
-                <XboxLayout
-                  gamepad={activeGamepad}
-                  liveInputLabel={getLiveInputLabel()}
-                  onCalibrateClick={() => setCurrentView('calibration')}
-                />
-              ) : (
-                <PlayStationLayout
-                  gamepad={activeGamepad}
-                  liveInputLabel={getLiveInputLabel()}
-                  onCalibrateClick={() => setCurrentView('calibration')}
-                />
-              )}
-            </div>
-          )}
+          {/* Main Live Input Glass Panel */}
+          <div className="store-glass-panel p-6 sm:p-8">
+            {selectedBrand === 'xbox' ? (
+              <XboxLayout
+                gamepad={activeGamepad}
+                liveInputLabel={getLiveInputLabel()}
+                onCalibrateClick={() => setCurrentView('calibration')}
+              />
+            ) : (
+              <PlayStationLayout
+                gamepad={activeGamepad}
+                liveInputLabel={getLiveInputLabel()}
+                onCalibrateClick={() => setCurrentView('calibration')}
+              />
+            )}
+          </div>
         </>
       )}
     </div>
