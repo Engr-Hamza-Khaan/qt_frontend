@@ -5,6 +5,7 @@ import CartDrawer from '../components/CartDrawer';
 import SupportChatbot from '../components/SupportChatbot';
 import AnnouncementBar from '../../components/ui/AnnouncementBar';
 import TermsModal from '../components/TermsModal';
+import WebsitePopup from '../components/WebsitePopup';
 
 function StoreLayout() {
   const location = useLocation();
@@ -21,6 +22,7 @@ function StoreLayout() {
       <CartDrawer />
       <SupportChatbot />
       <TermsModal />
+      <WebsitePopup />
     </div>
   );
 }

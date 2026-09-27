@@ -72,9 +72,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
     );
   }
 
-  const iconSrc = active
-    ? item.iconFilled || item.iconOutline
-    : item.iconOutline;
+  const iconSrc = item.iconFilled || item.iconOutline;
 
   const iconElement = (
     <div
@@ -289,9 +287,7 @@ function MobileNavSection({ item, active, onNavigate }) {
     );
   }
 
-  const iconSrc = active
-    ? item.iconFilled || item.iconOutline
-    : item.iconOutline;
+  const iconSrc = item.iconFilled || item.iconOutline;
 
   const renderIcon = (isLarge = false) => {
     const sizeCls = isLarge ? 'w-6 h-6' : 'w-5 h-5';
@@ -425,25 +421,39 @@ function StoreHeader({ embedded = false }) {
               <button
                 type="button"
                 onClick={() => setSearchOpen((o) => !o)}
-                className={`p-2 sm:p-2.5 rounded-full transition ${
+                className={`p-2 sm:p-2.5 rounded-full transition-all duration-300 hover:scale-110 hover:text-white hover:drop-shadow-[0_0_14px_rgba(255,255,255,0.95)] [&>svg]:hover:fill-current ${
                   searchOpen
-                    ? 'text-blue-400 bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.4)]'
-                    : 'text-gray-200 hover:text-white hover:bg-white/10'
+                    ? 'text-blue-400 bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-105'
+                    : 'text-gray-200 hover:bg-white/10'
                 }`}
                 aria-label="Search"
                 title="Search products (Ctrl+K)"
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-5 h-5 transition-transform" />
               </button>
+
+              <Link
+                to="/wishlist"
+                className="relative p-2 sm:p-2.5 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition-all duration-300 hover:scale-110 hover:drop-shadow-[0_0_14px_rgba(255,255,255,0.95)] [&>svg]:hover:fill-current"
+                aria-label="Wishlist"
+                title="Wishlist"
+              >
+                <Heart className="w-5 h-5 transition-transform" />
+                {wishlistCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(225,29,72,0.6)]">
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
 
               <button
                 type="button"
                 onClick={() => setIsOpen(true)}
-                className="relative p-2 sm:p-2.5 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition"
+                className="relative p-2 sm:p-2.5 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition-all duration-300 hover:scale-110 hover:drop-shadow-[0_0_14px_rgba(255,255,255,0.95)] [&>svg]:hover:fill-current"
                 aria-label="Cart"
                 title="Shopping Cart"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-5 h-5 transition-transform" />
                 {itemCount > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-[0_0_8px_rgba(37,99,235,0.6)]">
                     {itemCount}
@@ -453,7 +463,7 @@ function StoreHeader({ embedded = false }) {
 
               <Link
                 to="/admin/login"
-                className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0a1548] border border-blue-400/30 hover:border-blue-400/60 hover:bg-[#102066] transition shadow-[0_0_15px_rgba(30,80,220,0.2)]"
+                className="hidden sm:inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-[#0a1548] border border-blue-400/30 hover:border-white/80 hover:bg-[#102066] transition-all duration-300 hover:scale-105 hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.6)] shadow-[0_0_15px_rgba(30,80,220,0.2)]"
               >
                 Sign In
               </Link>

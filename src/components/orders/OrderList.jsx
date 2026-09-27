@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import {
   ShoppingBag, Search, Eye, RefreshCw, Truck, CreditCard,
@@ -9,6 +10,7 @@ import ModalOverlay from '../ui/ModalOverlay';
 import { formatCurrency } from '../../utils/formatters';
 
 function OrderList() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
@@ -324,6 +326,23 @@ function OrderList() {
     }
   };
 
+  const handleGenerateInvoice = async (orderId) => {
+    try {
+      const res = await api.invoices.createFromOrder(orderId);
+      if (res.success) {
+        if (
+          window.confirm(
+            `Invoice ${res.data?.invoiceNumber || ''} created successfully from this order! Do you want to view the invoices list now?`
+          )
+        ) {
+          navigate('/admin/invoices');
+        }
+      }
+    } catch (err) {
+      alert(err.message || 'Error generating invoice from order');
+    }
+  };
+
   const getOrderStatusBadge = (status) => {
     switch (status) {
       case 'Completed':
@@ -541,13 +560,24 @@ function OrderList() {
 
               <div className="flex items-center gap-2">
                 {canManageOrders && !isEditingOrder && (
-                  <button
-                    onClick={handleStartEdit}
-                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                    Edit Order
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateInvoice(selectedOrder.id)}
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Generate Invoice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleStartEdit}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Edit Order
+                    </button>
+                  </>
                 )}
                 {isEditingOrder && (
                   <button
@@ -1170,6 +1200,14 @@ function OrderList() {
               <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/20 flex items-center justify-between gap-3">
                 {canManageOrders && (
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateInvoice(selectedOrder.id)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition shadow-md"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Generate Invoice
+                    </button>
                     <button
                       type="button"
                       onClick={handleStartEdit}

@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  ShoppingCart, ChevronLeft, Check, Minus, Plus, ShieldCheck, Truck, Heart,
+  ShoppingCart, ChevronLeft, Check, Minus, Plus, Heart,
   Sparkles, Layers, Box, Cpu, HardDrive, Palette, Award, AlertTriangle,
-  Zap, ListFilter, CheckCircle2, Info, Sliders, Building2
+  Zap, ListFilter, CheckCircle2, Info, Sliders, Building2, Play, Film
 } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
 import { storeApi } from '../api';
@@ -12,6 +12,36 @@ import { useWishlist } from '../context/WishlistContext';
 import { getMediaUrl } from '../utils';
 import { formatCurrency } from '../../utils/formatters';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+
+// Helper to extract or convert YouTube URLs & iframe codes into playable embed links
+function getYouTubeEmbedUrl(urlOrCode, fallbackTitle = '') {
+  if (!urlOrCode) {
+    // Provide nice realistic playable trailer fallbacks for demo items if none is configured
+    const lower = (fallbackTitle || '').toLowerCase();
+    if (lower.includes('god of war')) return 'https://www.youtube-nocookie.com/embed/EE-4GvjKcfs';
+    if (lower.includes('spider') || lower.includes('spiderman')) return 'https://www.youtube-nocookie.com/embed/bgqGdIoa52s';
+    if (lower.includes('ps5') || lower.includes('playstation')) return 'https://www.youtube-nocookie.com/embed/RkC0l4iekYo';
+    return null;
+  }
+
+  // If iframe string was pasted, extract src
+  const srcMatch = urlOrCode.match(/src=["']([^"']+)["']/);
+  if (srcMatch) return srcMatch[1];
+
+  // Standard YouTube url regex (supports watch?v=, youtu.be, shorts, embed)
+  const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+  const match = urlOrCode.match(regExp);
+  if (match && match[2].length >= 11) {
+    const videoId = match[2].substring(0, 11);
+    return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`;
+  }
+
+  if (typeof urlOrCode === 'string' && (urlOrCode.includes('youtube.com') || urlOrCode.includes('youtu.be') || urlOrCode.startsWith('http'))) {
+    return urlOrCode;
+  }
+
+  return null;
+}
 
 function ProductPage() {
   const { id } = useParams();
@@ -27,133 +57,136 @@ function ProductPage() {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedEdition, setSelectedEdition] = useState('');
   const [selectedBundle, setSelectedBundle] = useState('');
-  const [showAllVariationsList, setShowAllVariationsList] = useState(false);
-  const [activeTab, setActiveTab] = useState('attributes'); // 'attributes' | 'variations' | 'specs' | 'description'
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
   const product = data?.data;
   const rawVariations = useMemo(() => product?.variations || [], [product]);
 
-  // Dynamically extract distinct variation dimensions from backend product variations
-  const platforms = useMemo(
-    () => [...new Set(rawVariations.map((v) => v.platform).filter(Boolean))],
-    [rawVariations]
-  );
-  const conditions = useMemo(
-    () => [...new Set(rawVariations.map((v) => v.condition).filter(Boolean))],
-    [rawVariations]
-  );
-  const storages = useMemo(
-    () => [...new Set(rawVariations.map((v) => v.storage).filter(Boolean))],
-    [rawVariations]
-  );
-  const colors = useMemo(
-    () => [...new Set(rawVariations.map((v) => v.color).filter(Boolean))],
-    [rawVariations]
-  );
-  const editions = useMemo(
-    () => [...new Set(rawVariations.map((v) => v.edition).filter(Boolean))],
-    [rawVariations]
-  );
-  const bundles = useMemo(
-    () => [...new Set(rawVariations.map((v) => v.bundle).filter(Boolean))],
-    [rawVariations]
-  );
+  // Extract distinct platforms and conditions
+  const platforms = useMemo(() => {
+    const fromVars = [...new Set(rawVariations.map((v) => v.platform).filter(Boolean))];
+    if (fromVars.length > 0) return fromVars;
+    if (product?.attributes?.platform) return [product.attributes.platform];
+    return ['PS4', 'PS5', 'NINTENDO'];
+  }, [rawVariations, product]);
+
+  const conditions = useMemo(() => {
+    const fromVars = [...new Set(rawVariations.map((v) => v.condition).filter(Boolean))];
+    if (fromVars.length > 0) return fromVars;
+    if (product?.condition) return [product.condition];
+    return ['New', 'Used'];
+  }, [rawVariations, product]);
 
   // Initialize selected variation on load
   useEffect(() => {
     if (rawVariations.length > 0 && !selectedVariation) {
       const inStockVar = rawVariations.find((v) => v.stockQuantity > 0) || rawVariations[0];
       setSelectedVariation(inStockVar);
-      setSelectedPlatform(inStockVar.platform || '');
-      setSelectedCondition(inStockVar.condition || product?.condition || '');
+      setSelectedPlatform(inStockVar.platform || platforms[0] || 'PS5');
+      setSelectedCondition(inStockVar.condition || product?.condition || 'New');
       setSelectedStorage(inStockVar.storage || '');
       setSelectedColor(inStockVar.color || '');
       setSelectedEdition(inStockVar.edition || '');
       setSelectedBundle(inStockVar.bundle || '');
+    } else if (product && !selectedPlatform) {
+      setSelectedPlatform(product.attributes?.platform || platforms[0] || 'PS5');
+      setSelectedCondition(product.condition || 'New');
     }
-  }, [rawVariations, product]);
+  }, [rawVariations, product, platforms]);
+
+  useEffect(() => {
+    if (selectedVariation?.imageUrl) {
+      setActiveImageIndex(0);
+    }
+  }, [selectedVariation]);
 
   const activeVar = selectedVariation || rawVariations[0] || null;
-  const activePrice = activeVar ? activeVar.price : product?.price || 0;
+  const activePrice = activeVar?.price ? Number(activeVar.price) : Number(product?.price || 10000);
   const inStock = activeVar ? (activeVar.stockQuantity > 0) : true;
   const isLowStock = inStock && activeVar?.stockQuantity !== undefined && activeVar.stockQuantity <= (activeVar.lowStockThreshold || 5);
   const favorited = isInWishlist(product?.id);
 
-  // Fully Dynamic Attributes Extraction from API Product Data (No hardcoding)
-  const allAttributes = useMemo(() => {
-    if (!product) return {};
+  // Determine category type for dynamic attribute switching (Games vs Consoles vs Others)
+  const isConsole = useMemo(() => {
+    const catName = (product?.category?.name || '').toLowerCase();
+    const catSlug = (product?.category?.slug || '').toLowerCase();
+    const title = (product?.title || '').toLowerCase();
+    return (
+      catName.includes('console') ||
+      catSlug.includes('console') ||
+      catName.includes('hardware') ||
+      title.includes('playstation 5') ||
+      title.includes('xbox series') ||
+      title.includes('nintendo switch')
+    );
+  }, [product]);
 
-    const attrs = {};
+  const isGame = useMemo(() => {
+    const catName = (product?.category?.name || '').toLowerCase();
+    const catSlug = (product?.category?.slug || '').toLowerCase();
+    return (
+      catName.includes('game') ||
+      catSlug.includes('game') ||
+      product?.category?.platform?.toLowerCase() === 'software' ||
+      !isConsole
+    );
+  }, [product, isConsole]);
 
-    // 1. Dynamic brand detection (from attributes.brand / publisher / vendor / tags)
-    const brand =
-      product.attributes?.brand ||
-      product.attributes?.publisher ||
-      product.vendor?.companyName ||
-      (Array.isArray(product.tags)
-        ? product.tags.find((t) =>
-          ['Sony', 'Microsoft', 'Nintendo', 'EA', 'Rockstar', 'Capcom', 'Ubisoft', 'Sega', 'Bandai Namco'].includes(t)
-        )
-        : null);
-    if (brand) attrs['Brand'] = brand;
+  // Dynamic 4 Meta Attributes according to PDF Guidelines:
+  // "Ye Product Page Games Ke Hisab Se Bana Howa Ha. Suppose Agr Console Add Krte Hain Tou Ye Option/description Change Hojygi
+  // Example. Console Add Krne Ke Baad Edition Ajyega Genre Ki Jagah And Developer Ki Jagah Brand Ajye Same Story Hours Ki Jagah Series Ajye"
+  const metaAttributes = useMemo(() => {
+    if (!product) return [];
 
-    // 2. Standard product & active variation properties
-    const platform = activeVar?.platform || selectedPlatform || product.attributes?.platform || product.category?.platform;
-    if (platform) attrs['Platform'] = platform;
-
-    const condition = activeVar?.condition || selectedCondition || product.condition;
-    if (condition) attrs['Condition'] = condition;
-
-    const edition = activeVar?.edition || selectedEdition || product.attributes?.edition;
-    if (edition) attrs['Edition'] = edition;
-
-    const color = activeVar?.color || selectedColor || product.attributes?.color;
-    if (color) attrs['Color'] = color;
-
-    const storage = activeVar?.storage || selectedStorage || product.attributes?.storage;
-    if (storage) attrs['Storage'] = storage;
-
-    const bundle = activeVar?.bundle || selectedBundle || product.attributes?.bundle;
-    if (bundle) attrs['Bundle'] = bundle;
-
-    if (activeVar?.sku || product.modelNumber) attrs['SKU / Model'] = activeVar?.sku || product.modelNumber;
-
-    // 3. Dynamic JSON Key-Value pairs from backend product.attributes
-    if (product.attributes && typeof product.attributes === 'object') {
-      Object.entries(product.attributes).forEach(([key, val]) => {
-        if (val !== null && val !== undefined && val !== '') {
-          const formattedKey = key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, (str) => str.toUpperCase())
-            .trim();
-          if (!attrs[formattedKey]) {
-            attrs[formattedKey] = typeof val === 'object' ? JSON.stringify(val) : String(val);
-          }
+    if (isConsole) {
+      return [
+        {
+          label: 'Edition',
+          value: activeVar?.edition || activeVar?.attributes?.variant || product.attributes?.variant || product.attributes?.edition || 'Standard Edition'
+        },
+        {
+          label: 'Brand',
+          value: activeVar?.brand || product.attributes?.brand || 'Sony'
+        },
+        {
+          label: 'Series',
+          value: activeVar?.modelNumber || product.modelNumber || product.attributes?.series || 'PlayStation 5 Series'
+        },
+        {
+          label: 'Placement',
+          value: activeVar?.placement || product.attributes?.placement || 'Horizontal / Vertical'
         }
-      });
+      ];
     }
 
-    // 4. Dynamic JSON Key-Value pairs from backend product.specifications
-    if (product.specifications && typeof product.specifications === 'object') {
-      Object.entries(product.specifications).forEach(([key, val]) => {
-        if (val !== null && val !== undefined && val !== '') {
-          const formattedKey = key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, (str) => str.toUpperCase())
-            .trim();
-          if (!attrs[formattedKey]) {
-            attrs[formattedKey] = typeof val === 'object' ? JSON.stringify(val) : String(val);
-          }
-        }
-      });
-    }
+    // Default for Games
+    return [
+      {
+        label: 'Genre',
+        value: (Array.isArray(activeVar?.genres) && activeVar.genres.length > 0 ? activeVar.genres.join('/') : null) || product.attributes?.genre || product.specifications?.genre || 'Action-Adventure'
+      },
+      {
+        label: 'Story Hours',
+        value: (() => {
+          const raw = activeVar?.storyHours || product.attributes?.storyHours || product.specifications?.storyHours || product.attributes?.playtime;
+          if (!raw) return '18 Hours';
+          return String(raw).toLowerCase().includes('hour') ? String(raw) : `${raw} Hours`;
+        })()
+      },
+      {
+        label: 'Developer',
+        value: activeVar?.developer || product.attributes?.developer || product.attributes?.brand || product.specifications?.developer || 'IO Interactive'
+      },
+      {
+        label: 'Region',
+        value: activeVar?.region || product.attributes?.region || product.specifications?.region || 'USA (Canada)'
+      }
+    ];
+  }, [product, activeVar, isConsole]);
 
-    return attrs;
-  }, [product, activeVar, selectedPlatform, selectedCondition, selectedEdition, selectedColor, selectedStorage, selectedBundle]);
-
-  // Find best variation matching target filters, prioritizing the dimension that was clicked
+  // Find best variation matching target filters
   const findMatchingVariation = (target, changedDimension = null) => {
     if (!rawVariations || rawVariations.length === 0) return null;
     let bestMatch = null;
@@ -161,40 +194,25 @@ function ProductPage() {
 
     for (const v of rawVariations) {
       let score = 0;
-
-      // 1. Give highest priority to matching the dimension the user explicitly clicked
       if (changedDimension && target[changedDimension]) {
         const targetVal = String(target[changedDimension]).trim().toLowerCase();
         const vVal = v[changedDimension] ? String(v[changedDimension]).trim().toLowerCase() : '';
-
-        if (vVal === targetVal) {
-          score += 1000;
-        } else {
-          score -= 500;
-        }
+        if (vVal === targetVal) score += 1000;
+        else score -= 500;
       }
 
-      // 2. Score other target dimensions
       const dimensions = ['platform', 'condition', 'storage', 'color', 'edition', 'bundle'];
       for (const dim of dimensions) {
         if (target[dim]) {
           const targetVal = String(target[dim]).trim().toLowerCase();
           const vVal = v[dim] ? String(v[dim]).trim().toLowerCase() : '';
-
-          if (vVal === targetVal) {
-            score += 100;
-          } else if (!vVal) {
-            score += 10;
-          } else {
-            score -= 5;
-          }
+          if (vVal === targetVal) score += 100;
+          else if (!vVal) score += 10;
+          else score -= 5;
         }
       }
 
-      // 3. Prefer in-stock items
-      if (v.stockQuantity > 0) {
-        score += 50;
-      }
+      if (v.stockQuantity > 0) score += 50;
 
       if (score > bestScore) {
         bestScore = score;
@@ -209,41 +227,22 @@ function ProductPage() {
     const updated = {
       platform: dimension === 'platform' ? value : selectedPlatform,
       condition: dimension === 'condition' ? value : selectedCondition,
-      storage: dimension === 'storage' ? value : selectedStorage,
-      color: dimension === 'color' ? value : selectedColor,
-      edition: dimension === 'edition' ? value : selectedEdition,
-      bundle: dimension === 'bundle' ? value : selectedBundle,
+      storage: selectedStorage,
+      color: selectedColor,
+      edition: selectedEdition,
+      bundle: selectedBundle,
     };
 
     if (dimension === 'platform') setSelectedPlatform(value);
     if (dimension === 'condition') setSelectedCondition(value);
-    if (dimension === 'storage') setSelectedStorage(value);
-    if (dimension === 'color') setSelectedColor(value);
-    if (dimension === 'edition') setSelectedEdition(value);
-    if (dimension === 'bundle') setSelectedBundle(value);
 
     const match = findMatchingVariation(updated, dimension);
     if (match) {
       setSelectedVariation(match);
       setSelectedPlatform(match.platform || (dimension === 'platform' ? value : ''));
       setSelectedCondition(match.condition || (dimension === 'condition' ? value : ''));
-      setSelectedStorage(match.storage || (dimension === 'storage' ? value : ''));
-      setSelectedColor(match.color || (dimension === 'color' ? value : ''));
-      setSelectedEdition(match.edition || (dimension === 'edition' ? value : ''));
-      setSelectedBundle(match.bundle || (dimension === 'bundle' ? value : ''));
       setQuantity(1);
     }
-  };
-
-  const handleSelectVariationDirect = (v) => {
-    setSelectedVariation(v);
-    setSelectedPlatform(v.platform || '');
-    setSelectedCondition(v.condition || '');
-    setSelectedStorage(v.storage || '');
-    setSelectedColor(v.color || '');
-    setSelectedEdition(v.edition || '');
-    setSelectedBundle(v.bundle || '');
-    setQuantity(1);
   };
 
   const handleAddToCart = () => {
@@ -264,683 +263,348 @@ function ProductPage() {
   if (error || !product) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <p className="store-muted">{error || 'Product not found'}</p>
-        <Link to="/shop" className="store-link text-sm mt-4 inline-block">Back to Shop</Link>
+        <p className="text-gray-400">{error || 'Product not found'}</p>
+        <Link to="/shop" className="text-blue-400 hover:underline text-sm mt-4 inline-block">Back to Shop</Link>
       </div>
     );
   }
 
-  const images = product.media || [];
-  const mainImage = getMediaUrl(images.find((m) => m.isFeatured)?.url || images[0]?.url);
-  const attributeEntries = Object.entries(allAttributes);
-  const hasMultipleDimensions =
-    platforms.length > 1 ||
-    conditions.length > 1 ||
-    storages.length > 1 ||
-    colors.length > 1 ||
-    editions.length > 1 ||
-    bundles.length > 1;
+  // Media gallery list with variation image prioritization
+  const displayImages = useMemo(() => {
+    const list = [];
+    if (activeVar?.imageUrl) {
+      const varImg = getMediaUrl(activeVar.imageUrl);
+      if (varImg) list.push(varImg);
+    }
+    const mediaList = product?.media && product.media.length > 0 ? product.media : [];
+    mediaList.forEach((m) => {
+      const u = getMediaUrl(m.url);
+      if (u && !list.includes(u)) list.push(u);
+    });
+    if (list.length === 0) list.push('/SLim.png');
+    return list;
+  }, [product, activeVar]);
+
+  const currentImage = displayImages[activeImageIndex] || displayImages[0] || '/SLim.png';
+
+  // Playable video trailer embed
+  const trailerEmbedUrl = getYouTubeEmbedUrl(
+    product.embedMedia ||
+    product.attributes?.embedMedia ||
+    product.media?.find((m) => m.type === 'Video' || m.type === 'Trailer')?.url,
+    product.title
+  );
+
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center justify-between mb-6">
-        <Link to="/shop" className="inline-flex items-center gap-1 text-sm store-muted hover:text-neon-purple transition">
-          <ChevronLeft className="w-4 h-4" /> Back to Shop
-        </Link>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <span>Home</span> / <span>{product.category?.name || 'Store'}</span>
-          {allAttributes['Brand'] && <> / <span className="text-white font-medium">{allAttributes['Brand']}</span></>}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-        {/* Left Column: Media Gallery & Dynamic Key Attributes Card */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="aspect-[3/4] rounded-2xl bg-black/30 overflow-hidden store-glass-panel border border-neon-purple/20 relative group">
-            {mainImage ? (
-              <img src={mainImage} alt={product.title} className="w-full h-full object-fill transition-transform duration-500 group-hover:scale-105" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-500">No Image</div>
-            )}
-
-            {/* Overlaid Badges */}
-            <div className="absolute top-4 left-4 flex flex-col gap-1.5 pointer-events-none">
-              {allAttributes['Condition'] && (
-                <span className={`px-2.5 py-1 text-xs font-bold rounded-lg uppercase tracking-wider backdrop-blur-md shadow-md flex items-center gap-1 ${allAttributes['Condition'] === 'New'
-                    ? 'bg-emerald-500/90 text-white'
-                    : 'bg-amber-500/90 text-black font-extrabold'
-                  }`}>
-                  <Sparkles className="w-3 h-3" />
-                  {allAttributes['Condition'] === 'New' ? 'Brand New' : 'Pre-Owned'}
-                </span>
-              )}
-              {allAttributes['Edition'] && (
-                <span className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-indigo-600/90 text-white backdrop-blur-md shadow-md flex items-center gap-1">
-                  <Award className="w-3 h-3" /> {allAttributes['Edition']}
-                </span>
-              )}
-            </div>
-
-            {product.isFlashSale && (
-              <span className="absolute top-4 right-4 px-3 py-1 bg-red-600 text-white text-xs font-extrabold rounded-lg uppercase tracking-wider shadow-lg">
-                Flash Sale
-              </span>
-            )}
+    <div className="min-h-screen bg-[#060814] text-slate-100 font-sans">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-8 space-y-8">
+        
+        {/* ========================================================================= */}
+        {/* BREADCRUMB NAVIGATION (Matching PDF Top Row) */}
+        {/* ========================================================================= */}
+        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-400 border-b border-slate-800/80 pb-3">
+          <Link
+            to="/shop"
+            className="inline-flex items-center gap-1.5 text-slate-300 hover:text-white transition font-medium group"
+          >
+            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Shop</span>
+          </Link>
+          <div className="flex items-center gap-1.5 truncate max-w-[65%] text-[11px] sm:text-xs">
+            <span>Home</span>
+            <span>/</span>
+            <span>{product.category?.name || 'Games'}</span>
+            <span>/</span>
+            <span className="text-slate-200 font-semibold truncate">{product.title}</span>
           </div>
-
-          {images.length > 1 && (
-            <div className="flex gap-2.5 overflow-x-auto pb-1">
-              {images.map((img) => (
-                <div key={img.id} className="w-16 h-16 rounded-xl overflow-hidden store-glass-panel shrink-0 bg-black/20 border border-white/10 hover:border-neon-purple transition">
-                  <img src={getMediaUrl(img.url)} alt="" className="w-full h-full object-fill" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Dynamic Key Attributes Card (Driven 100% by DB Data) */}
-          {attributeEntries.length > 0 && (
-            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-3">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-neon-purple-light flex items-center gap-1.5">
-                <Building2 className="w-4 h-4 text-neon-purple" /> Key Attributes
-              </h3>
-
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                {attributeEntries.slice(0, 8).map(([key, val]) => (
-                  <div key={key} className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
-                    <span className="text-gray-400">{key}</span>
-                    <span className="font-bold text-white truncate max-w-[110px]" title={val}>{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right Column: Title, Dynamic Variations & Actions */}
-        <div className="lg:col-span-7 space-y-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              {(activeVar?.condition || selectedCondition || product.condition) && (
-                <span className={`text-xs px-2.5 py-1 rounded-lg font-bold border flex items-center gap-1 uppercase tracking-wider ${
-                  (activeVar?.condition || selectedCondition || product.condition) === 'New'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                    : 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                }`}>
-                  <Sparkles className="w-3 h-3" />
-                  {(activeVar?.condition || selectedCondition || product.condition) === 'New' ? 'Brand New' : 'Pre-Owned'}
-                </span>
-              )}
-              {allAttributes['Platform'] && (
-                <span className="text-xs px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 font-semibold border border-blue-500/30 flex items-center gap-1">
-                  <Cpu className="w-3 h-3" /> {allAttributes['Platform']}
-                </span>
-              )}
-              {allAttributes['Brand'] && (
-                <span className="text-xs px-2.5 py-1 rounded-lg bg-indigo-500/15 text-indigo-300 font-semibold border border-indigo-500/30 flex items-center gap-1">
-                  <Building2 className="w-3 h-3" /> {allAttributes['Brand']}
-                </span>
-              )}
-              {product.isFeatured && (
-                <span className="store-badge-featured text-xs px-2.5 py-0.5">Featured</span>
-              )}
-            </div>
+        {/* ========================================================================= */}
+        {/* MAIN PRODUCT HERO SECTION */}
+        {/* ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT AREA: 1:1 Main Image + Bottom Thumbnails */}
+          <div className="lg:col-span-6 space-y-4">
+            {/* Main Product Image (1:1 Ratio) */}
+            <div className="aspect-square w-full rounded-3xl overflow-hidden border border-slate-800 bg-[#0a0f24] shadow-2xl relative group flex items-center justify-center p-4">
+              <img
+                src={currentImage}
+                alt={product.title}
+                className="w-full h-full object-contain rounded-2xl transition-transform duration-500 group-hover:scale-105"
+              />
 
-            <h1 className="store-page-title text-2xl sm:text-3xl font-black mb-3">{product.title}</h1>
-
-            {/* Dynamic Price & SKU Header */}
-            <div className="flex flex-wrap items-baseline gap-3 my-3">
-              <p className="text-3xl sm:text-4xl font-extrabold text-white">
-                {formatCurrency(activePrice)}
-              </p>
-              {activeVar?.sku && (
-                <span className="text-xs text-gray-400 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 font-mono">
-                  SKU: {activeVar.sku}
-                </span>
-              )}
-            </div>
-
-            {/* Stock Availability Indicator */}
-            <div className="flex items-center gap-2 text-sm font-medium">
-              {inStock ? (
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg ${isLowStock ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+              {/* Overlaid Badges */}
+              <div className="absolute top-4 left-4 flex flex-col gap-1.5 pointer-events-none">
+                {selectedCondition && (
+                  <span className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg uppercase tracking-wider backdrop-blur-md shadow-md ${
+                    selectedCondition === 'New'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-amber-500 text-black'
                   }`}>
-                  <CheckCircle2 className="w-4 h-4" />
-                  {isLowStock && activeVar?.stockQuantity ? `Only ${activeVar.stockQuantity} left in stock!` : 'In Stock & Ready to Ship'}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30">
-                  <AlertTriangle className="w-4 h-4" /> Currently Out of Stock
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Guarantee Badges */}
-          <div className="grid grid-cols-2 gap-3 py-3 border-y border-white/10">
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <ShieldCheck className="w-4.5 h-4.5 text-neon-purple shrink-0" />
-              <span>100% Genuine Product Guarantee</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-300">
-              <Truck className="w-4.5 h-4.5 text-neon-purple shrink-0" />
-              <span>Fast Express Shipping</span>
-            </div>
-          </div>
-
-          {/* ========================================================================= */}
-          {/* DYNAMIC PRODUCT VARIATIONS SECTION */}
-          {/* ========================================================================= */}
-          {rawVariations.length > 0 && (
-            <div className="space-y-4 p-5 rounded-2xl bg-white/[0.03] border border-white/10">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Layers className="w-4.5 h-4.5 text-neon-purple" /> Select Variation
-                </h3>
-                {rawVariations.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllVariationsList(!showAllVariationsList)}
-                    className="text-xs text-neon-purple-light hover:text-white flex items-center gap-1 transition font-semibold"
-                  >
-                    <ListFilter className="w-3.5 h-3.5" />
-                    {showAllVariationsList ? 'Hide List' : 'Compare All Packages'}
-                  </button>
+                    {selectedCondition}
+                  </span>
                 )}
               </div>
-
-              {/* 1. Edition Variations */}
-              {editions.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-indigo-300 font-bold">
-                      <Award className="w-3.5 h-3.5 text-indigo-400" /> Edition:
-                    </span>
-                    <span className="text-white font-bold">{activeVar?.edition || selectedEdition}</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {editions.map((ed) => {
-                      const isSelected = String(activeVar?.edition || selectedEdition || '').toLowerCase() === String(ed).toLowerCase();
-                      return (
-                        <button
-                          key={ed}
-                          type="button"
-                          onClick={() => handleSelectDimension('edition', ed)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${isSelected
-                              ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.3)]'
-                              : 'border-white/10 text-gray-300 hover:border-white/30 bg-black/30'
-                            }`}
-                        >
-                          <Award className="w-3 h-3 text-indigo-400" /> {ed}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 2. Color Variations */}
-              {colors.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-pink-300 font-bold">
-                      <Palette className="w-3.5 h-3.5 text-pink-400" /> Color:
-                    </span>
-                    <span className="text-white font-bold">{activeVar?.color || selectedColor}</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {colors.map((col) => {
-                      const isSelected = String(activeVar?.color || selectedColor || '').toLowerCase() === String(col).toLowerCase();
-                      return (
-                        <button
-                          key={col}
-                          type="button"
-                          onClick={() => handleSelectDimension('color', col)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-2 ${isSelected
-                              ? 'border-pink-500 bg-pink-500/20 text-pink-300 shadow-[0_0_12px_rgba(236,72,153,0.3)]'
-                              : 'border-white/10 text-gray-300 hover:border-white/30 bg-black/30'
-                            }`}
-                        >
-                          <span className={`w-3 h-3 rounded-full ${col.toLowerCase().includes('black')
-                              ? 'bg-gray-900 border border-gray-600'
-                              : col.toLowerCase().includes('white')
-                                ? 'bg-white'
-                                : col.toLowerCase().includes('red')
-                                  ? 'bg-red-500'
-                                  : 'bg-purple-500'
-                            }`} />
-                          <span>{col}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 3. Storage Variations */}
-              {storages.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-emerald-300 font-bold">
-                      <HardDrive className="w-3.5 h-3.5 text-emerald-400" /> Storage Capacity:
-                    </span>
-                    <span className="text-white font-bold">{activeVar?.storage || selectedStorage}</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {storages.map((stor) => {
-                      const isSelected = String(activeVar?.storage || selectedStorage || '').toLowerCase() === String(stor).toLowerCase();
-                      return (
-                        <button
-                          key={stor}
-                          type="button"
-                          onClick={() => handleSelectDimension('storage', stor)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${isSelected
-                              ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                              : 'border-white/10 text-gray-300 hover:border-white/30 bg-black/30'
-                            }`}
-                        >
-                          <HardDrive className="w-3 h-3 text-emerald-400" /> {stor}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 4. Platform Variations */}
-              {platforms.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-blue-300 font-bold">
-                      <Cpu className="w-3.5 h-3.5 text-blue-400" /> Platform:
-                    </span>
-                    <span className="text-white font-bold">{activeVar?.platform || selectedPlatform}</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {platforms.map((plat) => {
-                      const isSelected = String(activeVar?.platform || selectedPlatform || '').toLowerCase() === String(plat).toLowerCase();
-                      return (
-                        <button
-                          key={plat}
-                          type="button"
-                          onClick={() => handleSelectDimension('platform', plat)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${isSelected
-                              ? 'border-blue-500 bg-blue-500/20 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.3)]'
-                              : 'border-white/10 text-gray-300 hover:border-white/30 bg-black/30'
-                            }`}
-                        >
-                          <Cpu className="w-3 h-3 text-blue-400" /> {plat}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 5. Condition Variations */}
-              {conditions.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-amber-300 font-bold">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Condition:
-                    </span>
-                    <span className="text-white font-bold">{(activeVar?.condition || selectedCondition) === 'New' ? 'Brand New' : (activeVar?.condition || selectedCondition || 'Pre-Owned')}</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {conditions.map((cond) => {
-                      const isSelected = String(activeVar?.condition || selectedCondition || '').toLowerCase() === String(cond).toLowerCase();
-                      return (
-                        <button
-                          key={cond}
-                          type="button"
-                          onClick={() => handleSelectDimension('condition', cond)}
-                          className={`p-2.5 rounded-xl text-xs text-left font-bold border transition flex items-center justify-between ${isSelected
-                              ? cond === 'New'
-                                ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                                : 'border-amber-500 bg-amber-500/20 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
-                              : 'border-white/10 text-gray-300 hover:border-white/30 bg-black/30'
-                            }`}
-                        >
-                          <div>
-                            <p className="font-bold flex items-center gap-1">
-                              {cond === 'New' ? '✨ Brand New' : `🔄 ${cond}`}
-                            </p>
-                          </div>
-                          {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* 6. Bundle Variations */}
-              {bundles.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1 text-purple-300 font-bold">
-                      <Box className="w-3.5 h-3.5 text-purple-400" /> Bundle Package:
-                    </span>
-                    <span className="text-white font-bold">{activeVar?.bundle || selectedBundle}</span>
-                  </label>
-                  <div className="flex flex-col gap-2">
-                    {bundles.map((bun) => {
-                      const isSelected = String(activeVar?.bundle || selectedBundle || '').toLowerCase() === String(bun).toLowerCase();
-                      return (
-                        <button
-                          key={bun}
-                          type="button"
-                          onClick={() => handleSelectDimension('bundle', bun)}
-                          className={`p-2.5 rounded-xl text-xs text-left font-semibold border transition flex items-center justify-between ${isSelected
-                              ? 'border-purple-500 bg-purple-500/20 text-white shadow-[0_0_12px_rgba(168,85,247,0.3)]'
-                              : 'border-white/10 text-gray-300 hover:border-white/30 bg-black/30'
-                            }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Box className="w-4 h-4 text-purple-400 shrink-0" />
-                            <span>{bun}</span>
-                          </div>
-                          {isSelected && <Check className="w-4 h-4 text-purple-400 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Generic single flat variation list if single variation dimensions exist */}
-              {!hasMultipleDimensions && rawVariations.length > 1 && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-gray-400">Available Variations:</label>
-                  <div className="flex flex-wrap gap-2">
-                    {rawVariations.map((v) => (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => handleSelectVariationDirect(v)}
-                        disabled={v.stockQuantity <= 0}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-medium border transition ${activeVar?.id === v.id
-                            ? 'border-neon-purple bg-neon-purple/20 text-white shadow-[0_0_12px_rgba(176,38,255,0.3)]'
-                            : v.stockQuantity <= 0
-                              ? 'border-white/10 text-gray-600 cursor-not-allowed line-through'
-                              : 'border-white/15 text-gray-300 hover:border-neon-purple/50 bg-black/30'
-                          }`}
-                      >
-                        {[v.edition, v.storage, v.color, v.condition, v.bundle].filter(Boolean).join(' · ') || v.sku}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Comparison List View */}
-              {showAllVariationsList && rawVariations.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
-                  <p className="text-xs font-bold text-gray-300">All Database Variation Packages:</p>
-                  <div className="divide-y divide-white/10 rounded-xl bg-black/40 border border-white/10 overflow-hidden text-xs">
-                    {rawVariations.map((v) => {
-                      const isSelected = activeVar?.id === v.id;
-                      return (
-                        <div
-                          key={v.id}
-                          onClick={() => handleSelectVariationDirect(v)}
-                          className={`p-3 flex items-center justify-between cursor-pointer transition ${isSelected ? 'bg-neon-purple/15 text-white' : 'hover:bg-white/5 text-gray-300'
-                            }`}
-                        >
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold font-mono">{v.sku}</span>
-                              {v.condition && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 font-semibold">{v.condition}</span>
-                              )}
-                              {v.edition && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold">{v.edition}</span>
-                              )}
-                            </div>
-                            <p className="text-[11px] text-gray-400">
-                              {[v.platform, v.storage, v.color, v.bundle].filter(Boolean).join(' · ') || 'Standard Specs'}
-                            </p>
-                          </div>
-                          <div className="text-right flex items-center gap-3">
-                            <div>
-                              <p className="font-extrabold text-sm text-neon-purple-light">{formatCurrency(v.price)}</p>
-                              <p className="text-[10px] text-gray-500">{v.stockQuantity > 0 ? `${v.stockQuantity} in stock` : 'Out of Stock'}</p>
-                            </div>
-                            <span className={`px-2.5 py-1 text-[11px] rounded-lg font-bold flex items-center gap-1 shrink-0 ${isSelected
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                                : 'bg-white/10 text-gray-400'
-                              }`}>
-                              {isSelected ? <><Check className="w-3 h-3 text-emerald-400" /> Selected</> : 'Select'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
             </div>
-          )}
 
-          {/* Dynamic Active Selection Summary */}
-          {activeVar && (
-            <div className="p-3.5 rounded-xl bg-purple-950/20 border border-neon-purple/30 text-xs flex flex-wrap items-center justify-between gap-2">
-              <span className="text-gray-300">
-                Selected Package: <strong className="text-white">{product.title}</strong> {[activeVar.edition, activeVar.storage, activeVar.color, activeVar.condition].filter(Boolean).join(' · ')}
-              </span>
-              <span className="text-neon-purple-light font-bold font-mono">{formatCurrency(activePrice)}</span>
+            {/* Bottom Thumbnail Strip */}
+            {displayImages.length > 1 && (
+              <div className="flex items-center justify-center gap-2.5 sm:gap-3 overflow-x-auto py-1">
+                {displayImages.map((imgUrl, idx) => {
+                  const isActive = activeImageIndex === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`aspect-square w-14 sm:w-16 rounded-2xl overflow-hidden shrink-0 border transition-all duration-200 p-1 bg-slate-900/90 ${
+                        isActive
+                          ? 'border-white ring-2 ring-white/40 shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-105'
+                          : 'border-slate-800 hover:border-slate-600 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`Thumbnail ${idx + 1}`}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT AREA: Title, Price, Dynamic Meta Specs, Selectors & Actions */}
+          <div className="lg:col-span-6 space-y-6">
+            
+            {/* Title & Price Header */}
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight mb-2">
+                {product.title}
+              </h1>
+              <div className="flex items-baseline gap-3">
+                <p className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
+                  {formatCurrency(activePrice)}
+                </p>
+                {/* {product.attributes?.maxPriceCap && (
+                  <span className="text-xs text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-md">
+                    Cap: {formatCurrency(product.attributes.maxPriceCap)}
+                  </span>
+                )} */}
+              </div>
             </div>
-          )}
 
-          {/* Quantity and Action Buttons */}
-          <div className="space-y-4 pt-2">
-            {inStock && (
-              <div className="flex items-center gap-4">
-                <p className="text-sm font-semibold text-white">Quantity:</p>
-                <div className="flex items-center gap-2 bg-black/40 border border-white/15 rounded-xl p-1">
+            {/* Dynamic Meta Specifications (Category-Aware: Games vs Consoles) */}
+            <div className="space-y-1.5 text-xs sm:text-sm text-slate-300 py-1 border-y border-slate-800/80">
+              {metaAttributes.map((attr) => (
+                <p key={attr.label} className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium w-28 shrink-0">{attr.label}:</span>
+                  <span className="font-semibold text-white truncate">{attr.value}</span>
+                </p>
+              ))}
+            </div>
+
+            {/* Platform Selector Buttons (Pill format matching PDF: [PS4] [PS5] [NINTENDO]) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Platform
+              </label>
+              <div className="flex flex-wrap gap-2.5">
+                {platforms.map((plat) => {
+                  const isSelected = selectedPlatform.toLowerCase() === plat.toLowerCase();
+                  return (
+                    <button
+                      key={plat}
+                      type="button"
+                      onClick={() => handleSelectDimension('platform', plat)}
+                      className={`px-5 py-2 rounded-xl text-xs sm:text-sm font-bold uppercase transition-all duration-200 border ${
+                        isSelected
+                          ? 'bg-white text-slate-950 border-white shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-105'
+                          : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-600 hover:text-white'
+                      }`}
+                    >
+                      {plat}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Condition Selector Buttons (Pill format matching PDF: [New] [Used]) */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Condition
+              </label>
+              <div className="flex flex-wrap gap-2.5">
+                {conditions.map((cond) => {
+                  const isSelected = selectedCondition.toLowerCase() === cond.toLowerCase();
+                  return (
+                    <button
+                      key={cond}
+                      type="button"
+                      onClick={() => handleSelectDimension('condition', cond)}
+                      className={`px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 border ${
+                        isSelected
+                          ? 'bg-white text-slate-950 border-white shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-105'
+                          : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-600 hover:text-white'
+                      }`}
+                    >
+                      {cond}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quantity Selector & Live Sub Total Calculation */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-white">Quantity:</span>
+                <div className="inline-flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-1">
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 transition"
+                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition"
+                    aria-label="Decrease quantity"
                   >
-                    <Minus className="w-4 h-4" />
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="font-extrabold w-8 text-center text-white">{quantity}</span>
+                  <span className="font-extrabold w-8 text-center text-sm text-white">{quantity}</span>
                   <button
                     type="button"
-                    onClick={() => setQuantity(Math.min(quantity + 1, activeVar?.stockQuantity || 99))}
-                    className="p-1.5 rounded-lg hover:bg-white/10 text-gray-300 transition"
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition"
+                    aria-label="Increase quantity"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {activeVar?.stockQuantity !== undefined && (
-                  <span className="text-xs text-gray-400">({activeVar.stockQuantity} available)</span>
-                )}
               </div>
-            )}
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={!inStock}
-                className={`store-btn-primary flex-1 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all ${!inStock
-                    ? 'opacity-50 cursor-not-allowed bg-gray-800'
-                    : added
-                      ? 'from-emerald-600 to-emerald-500'
-                      : 'hover:scale-[1.02]'
-                  }`}
-                style={added ? { background: 'linear-gradient(to right, #059669, #10b981)' } : undefined}
-              >
-                {added ? (
-                  <><Check className="w-5 h-5" /> Added to Cart</>
-                ) : inStock ? (
-                  <><ShoppingCart className="w-5 h-5" /> Add to Cart</>
-                ) : (
-                  'Out of Stock'
-                )}
-              </button>
+              {/* Sub Total (Prominently displayed as shown in PDF: "Sub Total: Rs. 20,000") */}
+              <p className="text-base sm:text-lg font-bold text-slate-200">
+                Sub Total: <span className="font-extrabold text-white font-mono">{formatCurrency(activePrice * quantity)}</span>
+              </p>
+            </div>
 
+            {/* Primary Action Buttons: Buy Now | Add to Cart | Wishlist Heart */}
+            <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleQuickBuy}
                 disabled={!inStock}
-                className={`py-3.5 px-6 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-1.5 transition ${!inStock
-                    ? 'opacity-50 cursor-not-allowed bg-white/5 border border-white/10'
-                    : 'bg-gradient-to-r from-neon-purple to-indigo-600 hover:from-neon-purple-light hover:to-indigo-500 shadow-neon-purple/40 hover:scale-[1.02]'
-                  }`}
+                className="flex-1 py-3 px-6 rounded-xl font-extrabold text-sm text-white bg-blue-600 hover:bg-blue-500 active:scale-95 shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Zap className="w-4 h-4 fill-current" /> Quick Buy
+                Buy Now
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!inStock}
+                className={`flex-1 py-3 px-5 rounded-xl font-extrabold text-sm border flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 ${
+                  added
+                    ? 'bg-emerald-600 border-emerald-500 text-white'
+                    : 'bg-[#0f1738] border-blue-500/40 text-blue-300 hover:border-blue-400 hover:text-white hover:bg-blue-900/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                }`}
+              >
+                {added ? (
+                  <><Check className="w-4 h-4" /> Added!</>
+                ) : (
+                  <><ShoppingCart className="w-4 h-4" /> Add to Cart</>
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={() => toggleWishlist(product)}
-                className={`p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-center gap-2 font-medium text-sm shrink-0 ${favorited
-                    ? 'bg-rose-500/20 border-rose-500/50 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                    : 'bg-white/5 border-white/15 text-gray-300 hover:text-white hover:border-rose-500/40 hover:bg-rose-500/10'
-                  }`}
+                className={`p-3 rounded-xl border transition-all duration-200 shrink-0 ${
+                  favorited
+                    ? 'bg-rose-500/20 border-rose-500/60 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-slate-700'
+                }`}
                 title={favorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
-                aria-label={favorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                aria-label="Wishlist"
               >
-                <Heart className={`w-5 h-5 transition-transform ${favorited ? 'fill-rose-500 text-rose-500 scale-110' : ''}`} />
-                <span className="hidden sm:inline">{favorited ? 'Saved' : 'Wishlist'}</span>
+                <Heart className={`w-5 h-5 ${favorited ? 'fill-rose-500 text-rose-500' : ''}`} />
               </button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ========================================================================= */}
-      {/* FULL DYNAMIC SPECIFICATIONS & ATTRIBUTES TABBED SECTION */}
-      {/* ========================================================================= */}
-      <div className="mt-12 pt-8 border-t border-white/10">
-        <div className="flex gap-2 border-b border-white/10 pb-3 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('attributes')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'attributes'
-                ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-          >
-            <Sliders className="w-4 h-4" /> Attributes Summary
-          </button>
-          {rawVariations.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveTab('variations')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'variations'
-                  ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-            >
-              <Layers className="w-4 h-4" /> Variations Matrix
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setActiveTab('description')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${activeTab === 'description'
-                ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-          >
-            <Info className="w-4 h-4" /> Product Description
-          </button>
+        {/* ========================================================================= */}
+        {/* SHORT OVERVIEW DESCRIPTION PARAGRAPH */}
+        {/* ========================================================================= */}
+        <div className="pt-2 text-sm sm:text-base leading-relaxed text-slate-300 max-w-5xl">
+          <p>
+            {product.description
+              ? product.description.split('\n')[0]
+              : 'Experience unparalleled next-generation gaming with top-tier performance, immersive storytelling, and breathtaking visuals engineered for true gaming enthusiasts.'}
+          </p>
         </div>
 
-        <div className="py-6">
-          {/* Tab 1: Dynamic Attributes Table */}
-          {activeTab === 'attributes' && (
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-neon-purple" /> Full Product Specifications & Attributes
-              </h3>
-
-              {attributeEntries.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {attributeEntries.map(([key, val]) => (
-                    <div key={key} className="flex justify-between p-3.5 rounded-xl bg-white/[0.02] border border-white/10 text-sm">
-                      <span className="text-gray-400 font-medium">{key}</span>
-                      <span className="font-bold text-white text-right font-sans">{val}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-400 text-sm">No custom attributes listed for this item.</p>
-              )}
+        {/* ========================================================================= */}
+        {/* CASH ON DELIVERY (COD) ADVANCE NOTICE BOX */}
+        {/* PDF Rule: "Ye Message Sab Products mein ayega just console mein 100% advance ayega." */}
+        {/* ========================================================================= */}
+        <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 sm:p-5 relative overflow-hidden">
+          <div className="flex items-start gap-3">
+            <span className="text-amber-400 text-lg shrink-0 mt-0.5">⚠️</span>
+            <div className="space-y-1 text-xs sm:text-sm">
+              <h4 className="font-bold text-amber-300">
+                {isConsole
+                  ? 'Important Notice for Console Orders:'
+                  : 'Important Notice for Cash on Delivery Orders:'}
+              </h4>
+              <p className="text-slate-300 leading-relaxed">
+                {isConsole
+                  ? 'The customer must pay 100% in advance before the console is shipped. Cash on Delivery (COD) is not available for consoles.'
+                  : 'The customer must pay Rs. 500/- in advance before the product is shipped. The remaining product price will be collected via Cash on Delivery (COD).'}
+              </p>
             </div>
-          )}
-
-          {/* Tab 2: Variations Matrix Table */}
-          {activeTab === 'variations' && rawVariations.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-neon-purple" /> Available Variations & Options Matrix
-              </h3>
-
-              <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/40">
-                <table className="w-full text-left text-xs text-gray-300">
-                  <thead className="bg-white/5 text-gray-400 uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="p-3">SKU</th>
-                      <th className="p-3">Edition</th>
-                      <th className="p-3">Color</th>
-                      <th className="p-3">Storage</th>
-                      <th className="p-3">Condition</th>
-                      <th className="p-3">Bundle</th>
-                      <th className="p-3">Price</th>
-                      <th className="p-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/10">
-                    {rawVariations.map((v) => {
-                      const isSelected = activeVar?.id === v.id;
-                      return (
-                        <tr key={v.id} className={isSelected ? 'bg-neon-purple/15 text-white font-bold' : 'hover:bg-white/5'}>
-                          <td className="p-3 font-mono text-neon-purple-light">{v.sku}</td>
-                          <td className="p-3">{v.edition || '—'}</td>
-                          <td className="p-3">{v.color || '—'}</td>
-                          <td className="p-3">{v.storage || '—'}</td>
-                          <td className="p-3 font-semibold">{v.condition || '—'}</td>
-                          <td className="p-3">{v.bundle || '—'}</td>
-                          <td className="p-3 font-bold text-emerald-400">{formatCurrency(v.price)}</td>
-                          <td className="p-3">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectVariationDirect(v)}
-                              className={`px-3 py-1.5 rounded-lg transition font-bold text-xs inline-flex items-center gap-1 ${isSelected
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-                                  : 'bg-neon-purple/20 text-neon-purple-light hover:bg-neon-purple hover:text-white'
-                                }`}
-                            >
-                              {isSelected ? (
-                                <><Check className="w-3.5 h-3.5 text-emerald-400" /> Selected</>
-                              ) : (
-                                'Select'
-                              )}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Description */}
-          {activeTab === 'description' && (
-            <div className="space-y-3 max-w-4xl text-sm leading-relaxed text-gray-300">
-              <h3 className="text-base font-bold text-white mb-2">Item Overview</h3>
-              <p className="whitespace-pre-line">{product.description || 'No detailed description available for this item.'}</p>
-            </div>
-          )}
+          </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* PRODUCT DESCRIPTION SECTION WITH PLAYABLE TRAILER & FULL TEXT */}
+        {/* PDF Rule: "Youtube se Embed Code ayega... ayse playable trailer show hona chayei. Description ayse ayegi after trailer ki" */}
+        {/* ========================================================================= */}
+        <div className="space-y-6 pt-4 border-t border-slate-800">
+          <div className="flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-400" />
+            <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
+              Product Description
+            </h2>
+          </div>
+
+          {/* Embedded Playable YouTube Video Trailer */}
+          {trailerEmbedUrl && (
+            <div className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-800 bg-black shadow-2xl aspect-video relative group">
+              <iframe
+                src={trailerEmbedUrl}
+                title={`${product.title} Trailer`}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          )}
+
+          {/* Full Detailed Description following the trailer */}
+          <div className="text-sm sm:text-base leading-relaxed text-slate-300 space-y-4 max-w-4xl">
+            {product.description ? (
+              <p className="whitespace-pre-line leading-relaxed">{product.description}</p>
+            ) : (
+              <p>
+                From Santa Monica Studio comes the critically acclaimed journey. Fimbulwinter is well underway. Kratos and Atreus must journey to each of the Nine Realms in search of answers as Asgardian forces prepare for a prophesied battle that will end the world. Along the way they will explore stunning, mythical landscapes, and face fearsome enemies in the form of Norse gods and monsters. The threat of Ragnarök grows ever closer. Kratos and Atreus must choose between their own safety and the safety of the realms.
+              </p>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

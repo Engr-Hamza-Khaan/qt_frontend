@@ -93,7 +93,7 @@ export const STORE_NAV = [
   {
     id: 'consoles',
     label: 'Consoles',
-    iconOutline: '/Icons/Console Outline.png',
+    iconOutline: '/Icons/Console Filled.png',
     iconFilled: '/Icons/Console Filled.png',
     to: '/shop?categorySlug=consoles',
     dropdown: CONSOLE_PLATFORMS,
@@ -105,7 +105,7 @@ export const STORE_NAV = [
   {
     id: 'games',
     label: 'Games',
-    iconOutline: '/Icons/CD Outline.png',
+    iconOutline: '/Icons/CD Filled.png',
     iconFilled: '/Icons/CD Filled.png',
     to: '/shop?categorySlug=games',
     dropdown: GAMES_DROPDOWN,
@@ -117,7 +117,7 @@ export const STORE_NAV = [
   {
     id: 'accessories',
     label: 'Accessories',
-    iconOutline: '/Icons/Accessories Outline.png',
+    iconOutline: '/Icons/Accessories Filled.png',
     iconFilled: '/Icons/Accessories Filled.png',
     to: '/shop?categorySlug=accessories',
     dropdown: ACCESSORIES_DROPDOWN,
@@ -140,7 +140,7 @@ export const STORE_NAV = [
   {
     id: 'gift-cards',
     label: 'Gift Cards',
-    iconOutline: '/Icons/Gift Cards.png',
+    iconOutline: '/Icons/Gift Card Filled.png',
     iconFilled: '/Icons/Gift Card Filled.png',
     to: '/shop?categorySlug=accessories&search=gift+cards',
     dropdown: GIFT_CARDS_DROPDOWN,
@@ -153,7 +153,7 @@ export const STORE_NAV = [
   {
     id: 'controller-tester',
     label: 'Controller Tester',
-    iconOutline: '/Icons/Controller Tester Outline.png',
+    iconOutline: '/Icons/Controller Tester Filled.png',
     iconFilled: '/Icons/Controller Tester Filled.png',
     to: '/controller-tester',
     isActive: (loc) => loc.pathname === '/controller-tester',
@@ -161,7 +161,7 @@ export const STORE_NAV = [
   {
     id: 'repair-and-sell',
     label: 'Repair / Sell',
-    iconOutline: '/Icons/Trade Sell Outline.png',
+    iconOutline: '/Icons/Trade Sell Filled.png',
     iconFilled: '/Icons/Trade Sell Filled.png',
     dropdown: REPAIR_SELL_DROPDOWN,
     isActive: (loc) =>

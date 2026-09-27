@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import StoreHeader from '../layout/StoreHeader';
 
-const PLATFORMS = [
+const DEFAULT_PLATFORMS = [
   {
     id: 'xbox',
     label: 'XBOX SERIES',
@@ -42,24 +42,41 @@ const PLATFORMS = [
   },
 ];
 
-function HeroSection() {
-  const [activeIndex, setActiveIndex] = useState(1); // Default to PlayStation (index 1) as in page 1
+function HeroSection({ heroConfig = {} }) {
+  const badge = heroConfig?.badge || '• CERTIFIED • TESTED • READY TO SHIP';
+  const headline1 = heroConfig?.headline1 !== undefined ? heroConfig.headline1 : 'CONSOLE YOU';
+  const headline2 = heroConfig?.headline2 !== undefined ? heroConfig.headline2 : 'WANT,';
+  const headlineHollow = heroConfig?.headlineHollow !== undefined ? heroConfig.headlineHollow : 'READY TO PLAY.';
+  const subtitle = heroConfig?.subtitle !== undefined ? heroConfig.subtitle : 'Every console is inspected, stress-tested, and backed by a 90-day warranty before it reaches your door. Trade in your old gear anytime.';
+  const shopBtnText = heroConfig?.shopBtnText || 'Shop Console';
+  const shopBtnLink = heroConfig?.shopBtnLink || null;
+  const sellBtnText = heroConfig?.sellBtnText || 'Sell Your Console';
+  const sellBtnLink = heroConfig?.sellBtnLink || '/sell';
+
+  const platforms = (Array.isArray(heroConfig?.platforms) && heroConfig.platforms.length > 0)
+    ? heroConfig.platforms.map((p, idx) => ({
+        ...DEFAULT_PLATFORMS[idx % DEFAULT_PLATFORMS.length],
+        ...p,
+      }))
+    : DEFAULT_PLATFORMS;
+
+  const [activeIndex, setActiveIndex] = useState(1); // Default to PlayStation (index 1)
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || platforms.length <= 1) return;
 
     timerRef.current = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % PLATFORMS.length);
+      setActiveIndex((prev) => (prev + 1) % platforms.length);
     }, 5500);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPaused]);
+  }, [isPaused, platforms.length]);
 
-  const currentPlatform = PLATFORMS[activeIndex];
+  const currentPlatform = platforms[activeIndex] || platforms[0] || DEFAULT_PLATFORMS[0];
 
   return (
     <section
@@ -91,54 +108,54 @@ function HeroSection() {
           {/* Left Hero Content Column (7 cols) */}
           <div className="lg:col-span-7 flex flex-col items-start text-left z-20">
             
-            {/* Pill Badge: • CERTIFIED • TESTED • READY TO SHIP */}
-            <div className="inline-flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-[#0a1548]/90 border border-blue-400/30 text-blue-100 text-[11px] sm:text-xs md:text-sm font-semibold tracking-wider mb-5 sm:mb-6 shadow-[0_0_20px_rgba(59,130,246,0.2)] backdrop-blur-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-              <span className="tracking-widest">CERTIFIED</span>
-              <span className="text-cyan-400 font-bold">•</span>
-              <span className="tracking-widest">TESTED</span>
-              <span className="text-cyan-400 font-bold">•</span>
-              <span className="tracking-widest">READY TO SHIP</span>
-            </div>
+            {/* Pill Badge */}
+            {badge && (
+              <div className="inline-flex items-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full bg-[#0a1548]/90 border border-blue-400/30 text-blue-100 text-[11px] sm:text-xs md:text-sm font-semibold tracking-wider mb-5 sm:mb-6 shadow-[0_0_20px_rgba(59,130,246,0.2)] backdrop-blur-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                <span className="tracking-widest uppercase">{badge}</span>
+              </div>
+            )}
 
             {/* Main Headline */}
             <h1 className="font-sans font-black tracking-tight uppercase leading-[0.95] text-[2.75rem] xs:text-5xl sm:text-6xl md:text-7xl lg:text-[5rem] xl:text-[5.4rem] mb-4 sm:mb-5">
-              <span className="block text-white">CONSOLE YOU</span>
-              <span className="block text-white">WANT,</span>
-              <span className="block hero-hollow-stroke">READY TO PLAY.</span>
+              {headline1 && <span className="block text-white">{headline1}</span>}
+              {headline2 && <span className="block text-white">{headline2}</span>}
+              {headlineHollow && <span className="block hero-hollow-stroke">{headlineHollow}</span>}
             </h1>
 
             {/* Subtext description */}
-            <p className="text-sm sm:text-base md:text-lg text-gray-300 font-normal leading-relaxed max-w-xl mb-7 sm:mb-9">
-              Every console is inspected, stress-tested, and backed by a 90-day warranty before it reaches your door. Trade in your old gear anytime.
-            </p>
+            {subtitle && (
+              <p className="text-sm sm:text-base md:text-lg text-gray-300 font-normal leading-relaxed max-w-xl mb-7 sm:mb-9">
+                {subtitle}
+              </p>
+            )}
 
             {/* CTA Action Buttons */}
             <div className="flex flex-wrap items-center gap-3.5 sm:gap-4 w-full sm:w-auto">
               <Link
-                to={currentPlatform.shopLink}
+                to={shopBtnLink || currentPlatform.shopLink}
                 className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 bg-white hover:bg-gray-100 text-[#050c38] font-bold text-xs sm:text-sm md:text-base rounded-xl transition-all shadow-[0_4px_25px_rgba(255,255,255,0.25)] hover:shadow-[0_4px_30px_rgba(255,255,255,0.4)] active:scale-95"
               >
-                <span>Shop Console</span>
+                <span>{shopBtnText}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
 
               <Link
-                to={currentPlatform.sellLink}
+                to={sellBtnLink || currentPlatform.sellLink}
                 className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-3.5 bg-[#0a1548]/80 hover:bg-[#102066] border border-white/80 hover:border-white text-white font-bold text-xs sm:text-sm md:text-base rounded-xl transition-all shadow-[0_4px_20px_rgba(0,0,0,0.4)] active:scale-95"
               >
-                Sell Your Console
+                {sellBtnText}
               </Link>
             </div>
           </div>
 
           {/* Right Hero Visual Showcase Column (5 cols) */}
           <div className="lg:col-span-5 relative flex items-center justify-center min-h-[300px] sm:min-h-[400px] lg:min-h-[480px]">
-            {PLATFORMS.map((platform, idx) => {
+            {platforms.map((platform, idx) => {
               const isActive = idx === activeIndex;
               return (
                 <div
-                  key={platform.id}
+                  key={platform.id || idx}
                   className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ease-out ${
                     isActive
                       ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto z-20'
@@ -148,7 +165,7 @@ function HeroSection() {
                   <div className="relative w-full max-w-[340px] xs:max-w-[400px] sm:max-w-[480px] lg:max-w-[560px] animate-float">
                     <img
                       src={platform.image}
-                      alt={platform.alt}
+                      alt={platform.alt || platform.name || 'Gaming Console'}
                       className="w-full h-auto max-h-[380px] sm:max-h-[460px] lg:max-h-[500px] object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.85)] filter brightness-105"
                       loading={idx === 1 ? 'eager' : 'lazy'}
                     />
@@ -165,21 +182,21 @@ function HeroSection() {
       <div className="relative z-30 w-full bg-white border-t border-slate-200 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 sm:py-4 md:py-5">
           <div className="flex items-center justify-around sm:justify-between gap-2 sm:gap-6">
-            {PLATFORMS.map((platform, idx) => {
+            {platforms.map((platform, idx) => {
               const isActive = idx === activeIndex;
               return (
                 <button
-                  key={platform.id}
+                  key={platform.id || idx}
                   type="button"
                   onClick={() => setActiveIndex(idx)}
                   className="group flex-1 text-center py-2 px-1 sm:px-4 focus:outline-none transition-all duration-200"
-                  aria-label={`Show ${platform.name}`}
+                  aria-label={`Show ${platform.name || platform.label}`}
                   aria-pressed={isActive}
                 >
                   <span
                     className={`block font-outfit sm:font-display font-black text-sm xs:text-base sm:text-2xl md:text-3xl lg:text-[2rem] tracking-wider uppercase transition-all duration-200 ${
                       isActive
-                        ? `${platform.activeColor} scale-105 drop-shadow-sm`
+                        ? `${platform.activeColor || 'text-purple-600'} scale-105 drop-shadow-sm`
                         : 'text-[#050c38] opacity-90 hover:opacity-100 hover:scale-[1.02]'
                     }`}
                   >

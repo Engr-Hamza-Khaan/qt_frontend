@@ -223,7 +223,7 @@ export default function SearchBar({
     const parts = text.split(new RegExp(`(${highlight.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
     return parts.map((part, i) =>
       part.toLowerCase() === highlight.toLowerCase() ? (
-        <span key={i} className="text-neon-purple font-bold underline decoration-neon-purple/50">
+        <span key={i} className="text-blue-400 font-bold underline decoration-blue-400/50">
           {part}
         </span>
       ) : (
@@ -238,8 +238,8 @@ export default function SearchBar({
     const r = reason.toLowerCase();
     if (r.includes('alias')) {
       return {
-        bg: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-        icon: <Sparkles className="w-3 h-3 text-purple-400" />,
+        bg: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+        icon: <Sparkles className="w-3 h-3 text-blue-400" />,
       };
     }
     if (r.includes('sku')) {
@@ -279,13 +279,13 @@ export default function SearchBar({
         }}
         className={`group relative flex items-center gap-2.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-full transition-all duration-300 ${
           isOpen
-            ? 'bg-[#120c24] ring-2 ring-neon-purple shadow-[0_0_25px_rgba(176,38,255,0.4)] border border-neon-purple/50'
+            ? 'bg-[#081242] ring-2 ring-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.4)] border border-blue-500/50'
             : 'bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 shadow-inner'
         }`}
       >
         <Search
           className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 transition-colors duration-200 ${
-            isOpen ? 'text-neon-purple' : 'text-gray-400 group-hover:text-gray-200'
+            isOpen ? 'text-blue-400' : 'text-gray-400 group-hover:text-gray-200'
           }`}
         />
 
@@ -301,7 +301,7 @@ export default function SearchBar({
           className="flex-1 bg-transparent text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none tracking-wide"
         />
 
-        {loading && <Loader2 className="w-4 h-4 text-neon-purple animate-spin shrink-0" />}
+        {loading && <Loader2 className="w-4 h-4 text-blue-400 animate-spin shrink-0" />}
 
         {query && !loading && (
           <button
@@ -327,7 +327,7 @@ export default function SearchBar({
 
       {/* Autocomplete Dropdown Panel */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-2.5 z-[150] bg-[#0c0819]/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(176,38,255,0.15)] overflow-hidden animate-fade-in divide-y divide-white/10">
+        <div className="absolute left-0 right-0 top-full mt-2.5 z-[150] bg-[#060c2c]/95 backdrop-blur-2xl border border-blue-500/25 rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(59,130,246,0.25)] overflow-hidden animate-fade-in divide-y divide-white/10">
           {/* STATE 1: Empty Query - Recent & Popular Searches */}
           {!hasQuery && (
             <div className="p-4 sm:p-5 space-y-4 max-h-[75vh] overflow-y-auto">
@@ -389,9 +389,9 @@ export default function SearchBar({
                           setQuery(term);
                           fetchSuggestions(term);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-neon-purple/10 to-blue-600/10 hover:from-neon-purple/25 hover:to-blue-600/25 border border-neon-purple/30 hover:border-neon-purple/60 rounded-xl text-xs font-medium text-gray-200 hover:text-white transition shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600/15 to-blue-500/10 hover:from-blue-600/30 hover:to-blue-500/20 border border-blue-500/30 hover:border-blue-400/60 rounded-xl text-xs font-medium text-gray-200 hover:text-white transition shadow-sm"
                       >
-                        <TrendingUp className="w-3 h-3 text-neon-purple" />
+                        <TrendingUp className="w-3 h-3 text-blue-400" />
                         <span>{term}</span>
                       </button>
                     ))}
@@ -407,10 +407,10 @@ export default function SearchBar({
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { label: 'Consoles', slug: 'consoles', icon: '🎮' },
-                    { label: 'Games', slug: 'games', icon: '🕹️' },
-                    { label: 'Accessories', slug: 'accessories', icon: '🎧' },
-                    { label: '3D Figures', slug: 'custom-3d-figures', icon: '🗿' },
+                    { label: 'Consoles', slug: 'consoles' },
+                    { label: 'Games', slug: 'games' },
+                    { label: 'Accessories', slug: 'accessories' },
+                    { label: '3D Figures', slug: 'custom-3d-figures' },
                   ].map((cat) => (
                     <button
                       key={cat.slug}
@@ -473,7 +473,7 @@ export default function SearchBar({
                         onMouseEnter={() => setSelectedIndex(idx)}
                         className={`group flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all duration-150 ${
                           isSelected
-                            ? 'bg-gradient-to-r from-neon-purple/20 via-blue-600/15 to-transparent border border-neon-purple/40 shadow-[0_0_15px_rgba(176,38,255,0.2)]'
+                            ? 'bg-gradient-to-r from-blue-600/25 via-blue-500/15 to-transparent border border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.25)]'
                             : 'hover:bg-white/5 border border-transparent'
                         }`}
                       >
@@ -498,7 +498,7 @@ export default function SearchBar({
                         {/* Details */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-neon-purple transition-colors truncate">
+                            <h4 className="text-xs sm:text-sm font-bold text-white group-hover:text-blue-400 transition-colors truncate">
                               {renderHighlighted(product.title, query)}
                             </h4>
 
@@ -551,7 +551,7 @@ export default function SearchBar({
                           </span>
                         </div>
 
-                        <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-neon-purple transition-colors shrink-0" />
+                        <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors shrink-0" />
                       </div>
                     );
                   })}
@@ -568,7 +568,7 @@ export default function SearchBar({
                       </h4>
                       <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
                         Try searching with aliases like{' '}
-                        <span className="text-neon-purple font-semibold">GTA 5, RDR, PS5</span>, or
+                        <span className="text-blue-400 font-semibold">GTA 5, RDR, PS5</span>, or
                         browse by category.
                       </p>
                     </div>
@@ -597,11 +597,11 @@ export default function SearchBar({
 
           {/* Footer Action */}
           {hasQuery && (
-            <div className="p-3 bg-[#0a0614]/90 flex items-center justify-between gap-3 text-xs">
+            <div className="p-3 bg-[#050b28]/95 flex items-center justify-between gap-3 text-xs">
               <button
                 type="button"
                 onClick={() => executeSearch(query)}
-                className="flex items-center gap-2 font-bold text-neon-purple hover:text-purple-300 transition"
+                className="flex items-center gap-2 font-bold text-blue-400 hover:text-blue-300 transition"
               >
                 <span>View all {suggestions.totalMatches} results in Shop</span>
                 <ArrowRight className="w-3.5 h-3.5" />

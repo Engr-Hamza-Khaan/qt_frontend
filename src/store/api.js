@@ -60,4 +60,8 @@ export const storeApi = {
   trackSearch: (term, resultsCount = 0) =>
     storeRequest('/store/search/track', { method: 'POST', body: { term, resultsCount } }),
   getTermsAndConditions: () => storeRequest('/settings/terms-and-conditions'),
+  getPopup: () => storeRequest('/settings/popup'),
+  submitPopupLead: (data) =>
+    storeRequest('/settings/popup/lead', { method: 'POST', body: data }),
+  getLandingPage: () => storeRequest('/settings/landing-page'),
 };

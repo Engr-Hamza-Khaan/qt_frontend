@@ -6,6 +6,9 @@ import {
   Truck,
   Megaphone,
   ScrollText,
+  FileText,
+  Layers,
+  LayoutTemplate,
 } from 'lucide-react';
 import {
   canAccessDashboard,
@@ -20,12 +23,15 @@ export const PAGE_TITLES = {
   'vendor-portal': { title: 'Vendor Portal', subtitle: 'Your supplier dashboard and earnings' },
   products: { title: 'Products', subtitle: 'Manage catalog, variations and inventory' },
   orders: { title: 'Orders', subtitle: 'Track and fulfill customer orders' },
+  invoices: { title: 'Invoice Management', subtitle: 'Generate, manage, customize, and print manual invoices' },
   customers: { title: 'Customers', subtitle: 'Manage registered customer accounts' },
   discounts: { title: 'Discounts', subtitle: 'Create and manage promotional campaigns' },
   vendors: { title: 'Suppliers', subtitle: 'Manage vendor accounts and payouts' },
   services: { title: 'Service Tickets', subtitle: 'Repairs, trade-ins and live chat' },
   financial: { title: 'Financial Analytics', subtitle: 'Revenue, profit and performance reports' },
+  'landing-page': { title: 'Landing Page Customizer', subtitle: 'Customize landing page text, images, banners, and section order' },
   'announcement-bar': { title: 'Announcement Bar', subtitle: 'Manage store top announcement, message & active status' },
+  'website-popup': { title: 'Website Popup', subtitle: 'Configure popup appearance, timing, duration & visitor interactions' },
   'terms-and-conditions': { title: 'Terms & Conditions', subtitle: 'Manage store terms of service, policies & modal content' },
 };
 
@@ -52,6 +58,7 @@ const ALL_NAV_ITEMS = [
     submenu: [
       { id: 'products', path: '/admin/products', label: 'Products', roles: (role) => isStaffOrAbove(role) || isVendor(role) },
       { id: 'orders', path: '/admin/orders', label: 'Orders', roles: (role) => isStaffOrAbove(role) || isVendor(role) },
+      { id: 'invoices', path: '/admin/invoices', label: 'Invoices', roles: (role) => isStaffOrAbove(role) },
       { id: 'customers', path: '/admin/customers', label: 'Customers', roles: (role) => isStaffOrAbove(role) },
       { id: 'discounts', path: '/admin/discounts', label: 'Discounts', roles: (role) => isStaffOrAbove(role) },
     ],
@@ -71,10 +78,24 @@ const ALL_NAV_ITEMS = [
     roles: (role) => isStaffOrAbove(role),
   },
   {
+    id: 'landing-page',
+    path: '/admin/landing-page',
+    icon: LayoutTemplate,
+    label: 'Landing Page',
+    roles: (role) => isStaffOrAbove(role),
+  },
+  {
     id: 'announcement-bar',
     path: '/admin/announcement-bar',
     icon: Megaphone,
     label: 'Announcement Bar',
+    roles: (role) => isStaffOrAbove(role),
+  },
+  {
+    id: 'website-popup',
+    path: '/admin/website-popup',
+    icon: Layers,
+    label: 'Website Popup',
     roles: (role) => isStaffOrAbove(role),
   },
   {

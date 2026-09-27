@@ -134,7 +134,7 @@ function CheckoutPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input required className="store-input" placeholder="Full Name" value={guest.name} onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
               <input required type="email" className="store-input" placeholder="Email" value={guest.email} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
-              <input className="store-input sm:col-span-2" placeholder="Phone (optional)" value={guest.phoneNumber} onChange={(e) => setGuest({ ...guest, phoneNumber: e.target.value })} />
+              <input required className="store-input sm:col-span-2" placeholder="Phone (required)" value={guest.phoneNumber} onChange={(e) => setGuest({ ...guest, phoneNumber: e.target.value })} />
             </div>
           </section>
 
@@ -144,7 +144,6 @@ function CheckoutPage() {
               <input required className="store-input sm:col-span-2" placeholder="Street Address" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} />
               <input required className="store-input" placeholder="City" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
               <input required className="store-input" placeholder="State" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
-              <input required className="store-input" placeholder="Postal Code" value={address.postalCode} onChange={(e) => setAddress({ ...address, postalCode: e.target.value })} />
               <input required className="store-input" placeholder="Country" value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
             </div>
           </section>

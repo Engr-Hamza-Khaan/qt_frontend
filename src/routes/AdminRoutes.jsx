@@ -17,8 +17,11 @@ const ServiceTickets = lazy(() => import('../components/services/ServiceTickets'
 const FinancialReport = lazy(() => import('../components/analytics/FinancialReport'));
 const VendorList = lazy(() => import('../components/vendors/VendorList'));
 const VendorPortal = lazy(() => import('../components/vendors/VendorPortal'));
+const LandingPageSettings = lazy(() => import('../components/settings/LandingPageSettings'));
 const AnnouncementBarSettings = lazy(() => import('../components/settings/AnnouncementBarSettings'));
 const TermsSettings = lazy(() => import('../components/settings/TermsSettings'));
+const PopupSettings = lazy(() => import('../components/settings/PopupSettings'));
+const InvoiceList = lazy(() => import('../components/invoices/InvoiceList'));
 
 function PageLoader() {
   return <LoadingSpinner size="lg" className="min-h-[400px]" />;
@@ -64,11 +67,14 @@ export default function AdminRoutes() {
         <Route path="vendor-portal" element={<ProtectedRoute roles={vendorRoles}><LazyPage><VendorPortal /></LazyPage></ProtectedRoute>} />
         <Route path="products" element={<ProtectedRoute roles={productRoles}><LazyPage><ProductList /></LazyPage></ProtectedRoute>} />
         <Route path="orders" element={<ProtectedRoute roles={orderRoles}><LazyPage><OrderList /></LazyPage></ProtectedRoute>} />
+        <Route path="invoices" element={<ProtectedRoute roles={staffRoles}><LazyPage><InvoiceList /></LazyPage></ProtectedRoute>} />
         <Route path="customers" element={<ProtectedRoute roles={staffRoles}><LazyPage><CustomerList /></LazyPage></ProtectedRoute>} />
         <Route path="discounts" element={<ProtectedRoute roles={staffRoles}><LazyPage><DiscountList /></LazyPage></ProtectedRoute>} />
         <Route path="vendors" element={<ProtectedRoute roles={staffRoles}><LazyPage><VendorList /></LazyPage></ProtectedRoute>} />
         <Route path="services" element={<ProtectedRoute roles={staffRoles}><LazyPage><ServiceTickets /></LazyPage></ProtectedRoute>} />
+        <Route path="landing-page" element={<ProtectedRoute roles={staffRoles}><LazyPage><LandingPageSettings /></LazyPage></ProtectedRoute>} />
         <Route path="announcement-bar" element={<ProtectedRoute roles={staffRoles}><LazyPage><AnnouncementBarSettings /></LazyPage></ProtectedRoute>} />
+        <Route path="website-popup" element={<ProtectedRoute roles={staffRoles}><LazyPage><PopupSettings /></LazyPage></ProtectedRoute>} />
         <Route path="terms-and-conditions" element={<ProtectedRoute roles={staffRoles}><LazyPage><TermsSettings /></LazyPage></ProtectedRoute>} />
         <Route path="financial" element={<ProtectedRoute roles={adminRoles}><LazyPage><FinancialReport /></LazyPage></ProtectedRoute>} />
         <Route path="*" element={<RoleRedirect />} />

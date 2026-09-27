@@ -218,12 +218,37 @@ export const api = {
   },
 
   settings: {
+    getLandingPage: async () => request('/settings/landing-page'),
+    updateLandingPage: async (data) =>
+      request('/settings/landing-page', { method: 'PUT', body: data }),
     getNotificationBar: async () => request('/settings/notification-bar'),
     updateNotificationBar: async (data) =>
       request('/settings/notification-bar', { method: 'PUT', body: data }),
     getTermsAndConditions: async () => request('/settings/terms-and-conditions'),
     updateTermsAndConditions: async (data) =>
       request('/settings/terms-and-conditions', { method: 'PUT', body: data }),
+    getPopup: async () => request('/settings/popup'),
+    updatePopup: async (data) =>
+      request('/settings/popup', { method: 'PUT', body: data }),
+    submitPopupLead: async (data) =>
+      request('/settings/popup/lead', { method: 'POST', body: data }),
+  },
+
+  invoices: {
+    getAll: async (params = {}) => {
+      const query = new URLSearchParams();
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') query.append(key, val);
+      });
+      return request(`/invoices?${query.toString()}`);
+    },
+    getById: async (id) => request(`/invoices/${id}`),
+    getNextNumber: async () => request('/invoices/next-number'),
+    create: async (data) => request('/invoices', { method: 'POST', body: data }),
+    update: async (id, data) => request(`/invoices/${id}`, { method: 'PUT', body: data }),
+    delete: async (id) => request(`/invoices/${id}`, { method: 'DELETE' }),
+    createFromOrder: async (orderId) =>
+      request(`/invoices/from-order/${orderId}`, { method: 'POST' }),
   },
 
   search: {
