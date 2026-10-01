@@ -181,10 +181,26 @@ function ProductPage() {
       },
       {
         label: 'Region',
-        value: activeVar?.region || product.attributes?.region || product.specifications?.region || 'USA (Canada)'
+        value: activeVar?.region || product?.attributes?.region || product?.specifications?.region || 'USA (Canada)'
       }
     ];
   }, [product, activeVar, isConsole]);
+
+  // Media gallery list with variation image prioritization
+  const displayImages = useMemo(() => {
+    const list = [];
+    if (activeVar?.imageUrl) {
+      const varImg = getMediaUrl(activeVar.imageUrl);
+      if (varImg) list.push(varImg);
+    }
+    const mediaList = product?.media && product.media.length > 0 ? product.media : [];
+    mediaList.forEach((m) => {
+      const u = getMediaUrl(m.url);
+      if (u && !list.includes(u)) list.push(u);
+    });
+    if (list.length === 0) list.push('/SLim.png');
+    return list;
+  }, [product, activeVar]);
 
   // Find best variation matching target filters
   const findMatchingVariation = (target, changedDimension = null) => {
@@ -268,22 +284,6 @@ function ProductPage() {
       </div>
     );
   }
-
-  // Media gallery list with variation image prioritization
-  const displayImages = useMemo(() => {
-    const list = [];
-    if (activeVar?.imageUrl) {
-      const varImg = getMediaUrl(activeVar.imageUrl);
-      if (varImg) list.push(varImg);
-    }
-    const mediaList = product?.media && product.media.length > 0 ? product.media : [];
-    mediaList.forEach((m) => {
-      const u = getMediaUrl(m.url);
-      if (u && !list.includes(u)) list.push(u);
-    });
-    if (list.length === 0) list.push('/SLim.png');
-    return list;
-  }, [product, activeVar]);
 
   const currentImage = displayImages[activeImageIndex] || displayImages[0] || '/SLim.png';
 
