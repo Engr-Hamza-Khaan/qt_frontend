@@ -582,7 +582,7 @@ function ProductPage() {
 
           {/* Embedded Playable YouTube Video Trailer */}
           {trailerEmbedUrl && (
-            <div className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-800 bg-black shadow-2xl aspect-video relative group">
+            <div className="w-full rounded-3xl overflow-hidden border border-slate-800 bg-black shadow-2xl aspect-video relative group">
               <iframe
                 src={trailerEmbedUrl}
                 title={`${product.title} Trailer`}
@@ -594,7 +594,7 @@ function ProductPage() {
           )}
 
           {/* Full Detailed Description following the trailer */}
-          <div className="text-sm sm:text-base leading-relaxed text-slate-300 space-y-4 max-w-4xl">
+          <div className="text-sm sm:text-base leading-relaxed text-slate-300 space-y-4">
             {product.description ? (
               <p className="whitespace-pre-line leading-relaxed">{product.description}</p>
             ) : (
