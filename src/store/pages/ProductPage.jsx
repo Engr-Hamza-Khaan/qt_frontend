@@ -259,16 +259,6 @@ function ProductPage() {
     navigate('/checkout');
   };
 
-  if (loading) return <LoadingSpinner size="lg" className="min-h-[60vh]" />;
-  if (error || !product) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <p className="text-gray-400">{error || 'Product not found'}</p>
-        <Link to="/shop" className="text-blue-400 hover:underline text-sm mt-4 inline-block">Back to Shop</Link>
-      </div>
-    );
-  }
-
   // Media gallery list with variation image prioritization
   const displayImages = useMemo(() => {
     const list = [];
@@ -289,21 +279,31 @@ function ProductPage() {
 
   // Playable video trailer embed
   const trailerEmbedUrl = getYouTubeEmbedUrl(
-    product.embedMedia ||
-    product.attributes?.embedMedia ||
-    product.media?.find((m) => m.type === 'Video' || m.type === 'Trailer')?.url,
-    product.title
+    product?.embedMedia ||
+    product?.attributes?.embedMedia ||
+    product?.media?.find((m) => m.type === 'Video' || m.type === 'Trailer')?.url,
+    product?.title
   );
+
+  if (loading) return <LoadingSpinner size="lg" className="min-h-[60vh]" />;
+  if (error || !product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+        <p className="text-gray-400">{error || 'Product not found'}</p>
+        <Link to="/shop" className="text-blue-400 hover:underline text-sm mt-4 inline-block">Back to Shop</Link>
+      </div>
+    );
+  }
 
 
   return (
-    <div className="min-h-screen bg-[#060814] text-slate-100 font-sans">
+    <div className="min-h-screen text-slate-100 font-sans pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 md:py-8 space-y-8">
         
         {/* ========================================================================= */}
         {/* BREADCRUMB NAVIGATION (Matching PDF Top Row) */}
         {/* ========================================================================= */}
-        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-400 border-b border-slate-800/80 pb-3">
+        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-400 border-b border-blue-500/20 pb-3">
           <Link
             to="/shop"
             className="inline-flex items-center gap-1.5 text-slate-300 hover:text-white transition font-medium group"
@@ -328,7 +328,7 @@ function ProductPage() {
           {/* LEFT AREA: 1:1 Main Image + Bottom Thumbnails */}
           <div className="lg:col-span-6 space-y-4">
             {/* Main Product Image (1:1 Ratio) */}
-            <div className="aspect-square w-full rounded-3xl overflow-hidden border border-slate-800 bg-[#0a0f24] shadow-2xl relative group flex items-center justify-center p-4">
+            <div className="aspect-square w-full rounded-3xl overflow-hidden border border-blue-500/25 bg-[#081035]/85 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-md relative group flex items-center justify-center p-4">
               <img
                 src={currentImage}
                 alt={product.title}
@@ -359,10 +359,10 @@ function ProductPage() {
                       key={idx}
                       type="button"
                       onClick={() => setActiveImageIndex(idx)}
-                      className={`aspect-square w-14 sm:w-16 rounded-2xl overflow-hidden shrink-0 border transition-all duration-200 p-1 bg-slate-900/90 ${
+                      className={`aspect-square w-14 sm:w-16 rounded-2xl overflow-hidden shrink-0 border transition-all duration-200 p-1 bg-[#091442]/90 ${
                         isActive
-                          ? 'border-white ring-2 ring-white/40 shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-105'
-                          : 'border-slate-800 hover:border-slate-600 opacity-60 hover:opacity-100'
+                          ? 'border-blue-400 ring-2 ring-blue-400/50 shadow-[0_0_12px_rgba(59,130,246,0.5)] scale-105'
+                          : 'border-blue-500/20 hover:border-blue-400/50 opacity-70 hover:opacity-100'
                       }`}
                     >
                       <img
@@ -386,7 +386,7 @@ function ProductPage() {
                 {product.title}
               </h1>
               <div className="flex items-baseline gap-3">
-                <p className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
+                <p className="text-3xl sm:text-4xl font-extrabold text-white font-poppins tracking-tight">
                   {formatCurrency(activePrice)}
                 </p>
                 {/* {product.attributes?.maxPriceCap && (
@@ -398,7 +398,7 @@ function ProductPage() {
             </div>
 
             {/* Dynamic Meta Specifications (Category-Aware: Games vs Consoles) */}
-            <div className="space-y-1.5 text-xs sm:text-sm text-slate-300 py-1 border-y border-slate-800/80">
+            <div className="space-y-1.5 text-xs sm:text-sm text-slate-300 py-2 border-y border-blue-500/20">
               {metaAttributes.map((attr) => (
                 <p key={attr.label} className="flex items-center gap-1.5">
                   <span className="text-slate-400 font-medium w-28 shrink-0">{attr.label}:</span>
@@ -422,8 +422,8 @@ function ProductPage() {
                       onClick={() => handleSelectDimension('platform', plat)}
                       className={`px-5 py-2 rounded-xl text-xs sm:text-sm font-bold uppercase transition-all duration-200 border ${
                         isSelected
-                          ? 'bg-white text-slate-950 border-white shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-105'
-                          : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-600 hover:text-white'
+                          ? 'bg-white text-slate-950 border-white shadow-[0_0_15px_rgba(255,255,255,0.45)] scale-105'
+                          : 'bg-[#091442]/80 text-slate-200 border-blue-500/20 hover:border-blue-400/60 hover:text-white hover:bg-[#0e1d5e]'
                       }`}
                     >
                       {plat}
@@ -448,8 +448,8 @@ function ProductPage() {
                       onClick={() => handleSelectDimension('condition', cond)}
                       className={`px-5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 border ${
                         isSelected
-                          ? 'bg-white text-slate-950 border-white shadow-[0_0_12px_rgba(255,255,255,0.4)] scale-105'
-                          : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-600 hover:text-white'
+                          ? 'bg-white text-slate-950 border-white shadow-[0_0_15px_rgba(255,255,255,0.45)] scale-105'
+                          : 'bg-[#091442]/80 text-slate-200 border-blue-500/20 hover:border-blue-400/60 hover:text-white hover:bg-[#0e1d5e]'
                       }`}
                     >
                       {cond}
@@ -460,23 +460,23 @@ function ProductPage() {
             </div>
 
             {/* Quantity Selector & Live Sub Total Calculation */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-3 pt-2">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-bold text-white">Quantity:</span>
-                <div className="inline-flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-1">
+                <div className="inline-flex items-center gap-2 bg-[#091442]/90 border border-blue-500/25 rounded-xl p-1">
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition"
+                    className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="font-extrabold w-8 text-center text-sm text-white">{quantity}</span>
+                  <span className="font-extrabold w-8 text-center text-sm text-white font-poppins">{quantity}</span>
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
-                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition"
+                    className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition"
                     aria-label="Increase quantity"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -484,10 +484,15 @@ function ProductPage() {
                 </div>
               </div>
 
-              {/* Sub Total (Prominently displayed as shown in PDF: "Sub Total: Rs. 20,000") */}
-              <p className="text-base sm:text-lg font-bold text-slate-200">
-                Sub Total: <span className="font-extrabold text-white font-mono">{formatCurrency(activePrice * quantity)}</span>
-              </p>
+              {/* Sub Total (Prominently displayed as shown in PDF & requested: "ye bara hoga jese UI mein diya howa ha") */}
+              <div className="pt-1">
+                <p className="text-lg sm:text-xl font-bold text-slate-200 flex items-baseline gap-2">
+                  <span>Sub Total:</span>
+                  <span className="text-2xl sm:text-3xl font-extrabold text-white font-poppins tracking-tight">
+                    {formatCurrency(activePrice * quantity)}
+                  </span>
+                </p>
+              </div>
             </div>
 
             {/* Primary Action Buttons: Buy Now | Add to Cart | Wishlist Heart */}
@@ -508,7 +513,7 @@ function ProductPage() {
                 className={`flex-1 py-3 px-5 rounded-xl font-extrabold text-sm border flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 ${
                   added
                     ? 'bg-emerald-600 border-emerald-500 text-white'
-                    : 'bg-[#0f1738] border-blue-500/40 text-blue-300 hover:border-blue-400 hover:text-white hover:bg-blue-900/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                    : 'bg-[#0f1d4d] border-blue-500/40 text-blue-300 hover:border-blue-400 hover:text-white hover:bg-blue-900/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                 }`}
               >
                 {added ? (
@@ -524,7 +529,7 @@ function ProductPage() {
                 className={`p-3 rounded-xl border transition-all duration-200 shrink-0 ${
                   favorited
                     ? 'bg-rose-500/20 border-rose-500/60 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
-                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-slate-700'
+                    : 'bg-[#091442]/90 border-blue-500/25 text-slate-400 hover:text-rose-400 hover:border-rose-500/50'
                 }`}
                 title={favorited ? 'Remove from Wishlist' : 'Add to Wishlist'}
                 aria-label="Wishlist"
@@ -536,30 +541,21 @@ function ProductPage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* SHORT OVERVIEW DESCRIPTION PARAGRAPH */}
-        {/* ========================================================================= */}
-        <div className="pt-2 text-sm sm:text-base leading-relaxed text-slate-300 max-w-5xl">
-          <p>
-            {product.description
-              ? product.description.split('\n')[0]
-              : 'Experience unparalleled next-generation gaming with top-tier performance, immersive storytelling, and breathtaking visuals engineered for true gaming enthusiasts.'}
-          </p>
-        </div>
-
-        {/* ========================================================================= */}
         {/* CASH ON DELIVERY (COD) ADVANCE NOTICE BOX */}
         {/* PDF Rule: "Ye Message Sab Products mein ayega just console mein 100% advance ayega." */}
         {/* ========================================================================= */}
-        <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-4 sm:p-5 relative overflow-hidden">
-          <div className="flex items-start gap-3">
-            <span className="text-amber-400 text-lg shrink-0 mt-0.5">⚠️</span>
+        <div className="rounded-2xl bg-red-950/25 border border-red-500/40 p-4 sm:p-5 relative overflow-hidden shadow-[0_0_25px_rgba(239,68,68,0.12)]">
+          <div className="flex items-start gap-3.5">
+            <div className="p-1.5 rounded-xl bg-red-500/20 text-red-400 shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+            </div>
             <div className="space-y-1 text-xs sm:text-sm">
-              <h4 className="font-bold text-amber-300">
+              <h4 className="font-bold text-red-400 text-sm sm:text-base">
                 {isConsole
                   ? 'Important Notice for Console Orders:'
                   : 'Important Notice for Cash on Delivery Orders:'}
               </h4>
-              <p className="text-slate-300 leading-relaxed">
+              <p className="text-slate-200 leading-relaxed">
                 {isConsole
                   ? 'The customer must pay 100% in advance before the console is shipped. Cash on Delivery (COD) is not available for consoles.'
                   : 'The customer must pay Rs. 500/- in advance before the product is shipped. The remaining product price will be collected via Cash on Delivery (COD).'}
@@ -572,7 +568,7 @@ function ProductPage() {
         {/* PRODUCT DESCRIPTION SECTION WITH PLAYABLE TRAILER & FULL TEXT */}
         {/* PDF Rule: "Youtube se Embed Code ayega... ayse playable trailer show hona chayei. Description ayse ayegi after trailer ki" */}
         {/* ========================================================================= */}
-        <div className="space-y-6 pt-4 border-t border-slate-800">
+        <div className="space-y-6 pt-6 border-t border-blue-500/20">
           <div className="flex items-center gap-2">
             <Info className="w-5 h-5 text-blue-400" />
             <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
@@ -582,7 +578,7 @@ function ProductPage() {
 
           {/* Embedded Playable YouTube Video Trailer */}
           {trailerEmbedUrl && (
-            <div className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-slate-800 bg-black shadow-2xl aspect-video relative group">
+            <div className="w-full max-w-4xl mx-auto rounded-3xl overflow-hidden border border-blue-500/30 bg-black/90 shadow-[0_8px_32px_rgba(0,0,0,0.6)] aspect-video relative group">
               <iframe
                 src={trailerEmbedUrl}
                 title={`${product.title} Trailer`}

@@ -2,6 +2,7 @@ import React from 'react';
 import { Target } from 'lucide-react';
 import AnalogStickRadar from './AnalogStickRadar';
 import TriggerMeter from './TriggerMeter';
+import PlayStationTouchpad from './PlayStationTouchpad';
 
 function getBtn(gamepad, index) {
   return gamepad?.buttons?.[index] ?? { pressed: false, value: 0 };
@@ -10,7 +11,9 @@ function getBtn(gamepad, index) {
 export default function PlayStationLayout({
   gamepad,
   liveInputLabel = 'LIVE INPUT: PS5 Dualsense Controller',
-  onCalibrateClick
+  onCalibrateClick,
+  webHidStatus,
+  onConnectWebHid
 }) {
   const axes = gamepad?.axes ?? [0, 0, 0, 0];
 
@@ -96,23 +99,13 @@ export default function PlayStationLayout({
 
           {/* Center Column: Touchpad + Center Buttons Stack */}
           <div className="flex flex-col items-center gap-3">
-            {/* DualSense Touchpad (The highlighted box) */}
-            <div
-              className={`w-56 sm:w-64 h-24 sm:h-28 rounded-2xl relative flex items-center justify-center transition-all duration-150 border ${
-                isBtnActive(btnTouchpad)
-                  ? 'bg-blue-600/30 border-blue-400 shadow-[0_0_25px_rgba(59,130,246,0.6)]'
-                  : 'bg-[#0a1024]/90 border-white/10 shadow-inner'
-              }`}
-            >
-              {/* Touchpad Center Dot Indicator */}
-              <div
-                className={`w-3.5 h-3.5 rounded-full transition-all duration-150 ${
-                  isBtnActive(btnTouchpad)
-                    ? 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)] scale-125'
-                    : 'bg-white/80 shadow-[0_0_6px_rgba(255,255,255,0.4)]'
-                }`}
-              />
-            </div>
+            {/* PlayStation DualSense / DualShock Multi-Touch Touchpad (1 & 2 Fingers, Click) */}
+            <PlayStationTouchpad
+              gamepad={gamepad}
+              webHidStatus={webHidStatus}
+              onConnectWebHid={onConnectWebHid}
+              isBtnActive={isBtnActive}
+            />
 
             {/* PlayStation Logo + "HOME" */}
             <div className="flex flex-col items-center mt-1">

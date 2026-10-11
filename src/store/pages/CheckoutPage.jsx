@@ -151,9 +151,9 @@ function CheckoutPage() {
           <section className="p-4 sm:p-6 store-glass-panel">
             <h2 className="font-bold text-white mb-4 font-display">Payment & Notes</h2>
             <select className="store-input mb-4" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              <option>Credit Card</option>
+              {/* <option>Credit Card</option>
               <option>PayPal</option>
-              <option>Bank Transfer</option>
+              <option>Bank Transfer</option> */}
               <option>Cash on Delivery</option>
             </select>
             <textarea className="store-input" rows={3} placeholder="Order notes (optional)" value={customerNotes} onChange={(e) => setCustomerNotes(e.target.value)} />

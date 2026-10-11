@@ -76,7 +76,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
 
   const iconElement = (
     <div
-      className={`store-nav-item-inner group flex flex-col items-center justify-center gap-0.5 px-2 sm:px-2.5 py-1 rounded-2xl transition-all duration-200 ${
+      className={`store-nav-item-inner group flex flex-col items-center justify-center gap-0.5 px-2.5 sm:px-3 py-1 rounded-2xl transition-all duration-200 ${
         active ? 'store-nav-item-inner--active' : 'store-nav-item-inner--default'
       }`}
     >
@@ -93,7 +93,9 @@ function DesktopNavItem({ item, active, onNavigate }) {
           <img
             src={iconSrc}
             alt={item.label}
-            className={`w-6 h-6 sm:w-7 sm:h-7 object-contain transition-all duration-200 group-hover:scale-105 ${
+            className={`${
+              item.id === 'controller-tester' ? 'w-5 h-5 sm:w-[22px] sm:h-[22px]' : 'w-6 h-6 sm:w-7 sm:h-7'
+            } object-contain transition-all duration-200 group-hover:scale-105 ${
               active
                 ? 'brightness-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]'
                 : 'brightness-95 opacity-90 group-hover:opacity-100 group-hover:brightness-110 drop-shadow-[0_0_4px_rgba(255,255,255,0.2)]'

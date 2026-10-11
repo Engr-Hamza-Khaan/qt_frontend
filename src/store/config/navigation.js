@@ -129,15 +129,6 @@ export const STORE_NAV = [
       !loc.search.includes('region+gift+cards'),
   },
   {
-    id: 'home',
-    label: 'Home',
-    isCenterLogo: true,
-    iconOutline: '/Icons/QT Icon.png',
-    iconFilled: '/Icons/QT Icon.png',
-    to: '/',
-    isActive: (loc) => loc.pathname === '/' && !loc.search,
-  },
-  {
     id: 'gift-cards',
     label: 'Gift Cards',
     iconOutline: '/Icons/Gift Card Filled.png',

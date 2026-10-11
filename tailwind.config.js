@@ -17,6 +17,7 @@ export default {
         bebas: ['"Bebas Neue"', 'Impact', 'sans-serif'],
         condensed: ['"Barlow Condensed"', 'Inter', 'sans-serif'],
         outfit: ['"Outfit"', 'sans-serif'],
+        poppins: ['"Poppins"', 'sans-serif'],
       },
       colors: {
         store: {
