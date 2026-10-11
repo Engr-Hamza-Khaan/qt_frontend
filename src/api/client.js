@@ -210,10 +210,20 @@ export const api = {
   },
 
   services: {
-    getRepairs: async () => request('/services/repairs'),
+    getRepairs: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/services/repairs${query ? `?${query}` : ''}`);
+    },
     updateRepair: async (id, repairData) =>
       request(`/services/repairs/${id}`, { method: 'PUT', body: repairData }),
-    getSells: async () => request('/services/sell'),
+    deleteRepair: async (id) =>
+      request(`/services/repairs/${id}`, { method: 'DELETE' }),
+    uploadMedia: async (formData) =>
+      request('/services/upload', { method: 'POST', body: formData }),
+    getSells: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/services/sell${query ? `?${query}` : ''}`);
+    },
     updateSell: async (id, sellData) =>
       request(`/services/sell/${id}`, { method: 'PUT', body: sellData }),
     getChats: async () => request('/services/chats'),

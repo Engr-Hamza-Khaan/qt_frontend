@@ -48,6 +48,8 @@ export const storeApi = {
     storeRequest('/store/checkout', { method: 'POST', body: payload }),
   submitRepair: (data) =>
     storeRequest('/services/repairs', { method: 'POST', body: data }),
+  uploadServiceFiles: (formData) =>
+    storeRequest('/services/upload', { method: 'POST', body: formData }),
   submitSell: (data) =>
     storeRequest('/services/sell', { method: 'POST', body: data }),
   getChatSettings: () => storeRequest('/services/chat-settings'),
