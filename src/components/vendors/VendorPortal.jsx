@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, DollarSign, TrendingUp, ShoppingBag, Wallet, RefreshCw, ArrowRight,
-  Calendar, Filter, X, RotateCcw
+  Calendar, Filter, X, RotateCcw, ArrowDownLeft, ArrowUpRight, ShieldAlert
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { api } from '../../api/client';
@@ -12,6 +12,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import LowStockAlerts from '../dashboard/LowStockAlerts';
+import VendorStockModal from './VendorStockModal';
 import { formatCurrency, formatNumber, formatDate } from '../../utils/formatters';
 
 const REFRESH_INTERVAL_MS = 30000;
@@ -42,6 +43,8 @@ function VendorPortal() {
   const [preset, setPreset] = useState('30d');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockModalMode, setStockModalMode] = useState('in');
 
   const { data, loading, error, refetch } = useFetch(
     () => api.vendors.getPortalDashboard({ preset, startDate, endDate }),
@@ -121,23 +124,66 @@ function VendorPortal() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => refetch()}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStockModalMode('in');
+              setShowStockModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
+          >
+            <ArrowDownLeft className="w-4 h-4" />
+            + Stock In Game
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStockModalMode('out');
+              setShowStockModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition"
+          >
+            <ArrowUpRight className="w-4 h-4" />
+            Stock Out
+          </button>
           <Link
             to="/admin/products"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700 dark:hover:bg-slate-600 transition"
           >
-            Manage Products
+            View All Games
             <ArrowRight className="w-4 h-4" />
           </Link>
+        </div>
+      </div>
+
+      {/* VENDOR FULFILLMENT & PAYMENT POLICY NOTICE */}
+      <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl flex items-start gap-3 shadow-sm">
+        <div className="p-2 bg-amber-500/10 dark:bg-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+          <ShieldAlert className="w-5 h-5" />
+        </div>
+        <div className="text-xs text-amber-900 dark:text-amber-200/90 leading-relaxed space-y-1">
+          <div className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-sm">
+            Important Vendor Policy & Payment Terms
+          </div>
+          <p>
+            • <strong>Payment Settlement:</strong> Payment will be cleared after product is successfully received by the customer.
+          </p>
+          <p>
+            • <strong>Vendor Liability:</strong> If product has any problem or is not as described, <strong>all delivery charges will be paid by the vendor</strong>.
+          </p>
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Product should meet all the given details (condition, platform, region, edition, packaging).
+          </p>
         </div>
       </div>
 
@@ -399,6 +445,14 @@ function VendorPortal() {
           </Card>
         </div>
       </div>
+
+      {/* VENDOR STOCK IN / STOCK OUT MODAL */}
+      <VendorStockModal
+        open={showStockModal}
+        onClose={() => setShowStockModal(false)}
+        initialMode={stockModalMode}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

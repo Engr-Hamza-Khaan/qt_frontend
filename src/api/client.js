@@ -194,6 +194,11 @@ export const api = {
       });
       return request(`/vendors/portal/dashboard?${query.toString()}`);
     },
+    stockIn: async (data) =>
+      request('/vendors/stock/in', { method: 'POST', body: data }),
+    stockOut: async (data) =>
+      request('/vendors/stock/out', { method: 'POST', body: data }),
+    getMyStock: async () => request('/vendors/stock/my-stock'),
   },
 
   discounts: {
