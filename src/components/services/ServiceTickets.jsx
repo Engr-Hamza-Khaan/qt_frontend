@@ -4,9 +4,12 @@ import {
   MessageSquare, Wrench, DollarSign, Search, Clock, Check, X, Send, 
   User, Mail, Phone, Calendar, AlertCircle, RefreshCw, MessageCircle,
   Copy, ExternalLink, Trash2, Camera, ShieldAlert, Cpu, Gamepad2,
-  FileText, CheckCircle2, ChevronRight, Tag
+  FileText, CheckCircle2, ChevronRight, Tag, Sparkles, Link2, MapPin,
+  RotateCcw, PauseCircle, PlayCircle, Layers
 } from 'lucide-react';
 import ModalOverlay from '../ui/ModalOverlay';
+import { formatCurrency } from '../../utils/formatters';
+import { getMediaUrl } from '../../store/utils';
 
 function ServiceTickets() {
   const [repairs, setRepairs] = useState([]);
@@ -20,6 +23,8 @@ function ServiceTickets() {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [sellTypeFilter, setSellTypeFilter] = useState('All'); // All, 'Used Console Ad', 'General Trade-In'
+  const [sellAdStatusFilter, setSellAdStatusFilter] = useState('All'); // All, 'Active', 'Expired', 'Disabled', 'Sold'
 
   // Detail & Editing States
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -176,16 +181,65 @@ function ServiceTickets() {
     }
   };
 
+  const handleExtendAd = async (ticketId) => {
+    try {
+      const res = await api.services.extendSellAd(ticketId);
+      if (res?.success) {
+        if (selectedTicket?.id === ticketId) {
+          setSelectedTicket(res.data);
+        }
+        fetchData('sells', true);
+        fetchTabCounts();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to extend ad duration');
+    }
+  };
+
+  const handleToggleAdStatus = async (ticketId) => {
+    try {
+      const res = await api.services.toggleSellAd(ticketId);
+      if (res?.success) {
+        if (selectedTicket?.id === ticketId) {
+          setSelectedTicket(res.data);
+        }
+        fetchData('sells', true);
+        fetchTabCounts();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to toggle ad status');
+    }
+  };
+
+  const handleDeleteSell = async (ticketId) => {
+    if (!window.confirm('Are you sure you want to delete this Used Console ad / trade-in? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      const res = await api.services.deleteSell(ticketId);
+      if (res?.success) {
+        setSelectedTicket(null);
+        fetchData('sells', true);
+        fetchTabCounts();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete ad listing');
+    }
+  };
+
   const handleCopyTicketRef = (id) => {
-    const refCode = `#REP-${id.slice(0, 8).toUpperCase()}`;
+    const prefix = activeTab === 'repairs' ? '#REP-' : '#AD-';
+    const refCode = `${prefix}${id.slice(0, 8).toUpperCase()}`;
     navigator.clipboard.writeText(refCode);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
   };
 
   const handleCopySummary = (ticket) => {
-    const refCode = `#REP-${ticket.id.slice(0, 8).toUpperCase()}`;
-    const lines = [
+    const isRep = activeTab === 'repairs';
+    const prefix = isRep ? '#REP-' : '#AD-';
+    const refCode = `${prefix}${ticket.id.slice(0, 8).toUpperCase()}`;
+    const lines = isRep ? [
       `Quick Turn Repair Ticket: ${refCode}`,
       `Customer: ${ticket.customerName} (${ticket.customerEmail} / ${ticket.customerPhone || 'No phone'})`,
       `Device: ${ticket.deviceModel || ticket.deviceType || 'Console'}`,
@@ -194,9 +248,19 @@ function ServiceTickets() {
       `Quoted Cost: ${ticketCost ? `$${ticketCost}` : 'Pending diagnosis'}`,
       `Description: ${ticket.description}`,
       ticketNotes ? `Technician Notes: ${ticketNotes}` : ''
-    ].filter(Boolean).join('\n');
+    ] : [
+      `Quick Turn Used Console Ad: ${refCode}`,
+      `Customer / Seller: ${ticket.customerName} (${ticket.customerEmail} / ${ticket.customerPhone || 'No phone'})`,
+      `Console: ${ticket.productName} (${ticket.platform || 'Console'} / ${ticket.variant || 'Standard'})`,
+      `Storage / Color: ${ticket.storage || 'N/A'} • ${ticket.color || 'Standard'}`,
+      `Condition: ${ticket.condition || 'Used'}`,
+      `Asking Price: ${ticket.price ? formatCurrency(ticket.price) : 'N/A'}`,
+      `30-Day Status: ${ticket.adStatus || 'Active'} (${ticket.daysRemaining ?? 30} days left)`,
+      `Description: ${ticket.description}`,
+      ticketNotes ? `Admin Notes: ${ticketNotes}` : ''
+    ];
 
-    navigator.clipboard.writeText(lines);
+    navigator.clipboard.writeText(lines.filter(Boolean).join('\n'));
     setCopiedSummary(true);
     setTimeout(() => setCopiedSummary(false), 2000);
   };
@@ -274,6 +338,49 @@ function ServiceTickets() {
       completed: repairs.filter(r => r.status === 'Completed').length,
     };
   }, [repairs]);
+
+  // Filtered sells / used console ads based on search, type, ad status, and review status
+  const filteredSells = useMemo(() => {
+    return sells.filter((sell) => {
+      // Type filter
+      if (sellTypeFilter !== 'All' && sell.listingType !== sellTypeFilter) {
+        return false;
+      }
+      // Ad Status filter (Active, Expired, Disabled, Sold)
+      if (sellAdStatusFilter !== 'All' && sell.adStatus !== sellAdStatusFilter) {
+        return false;
+      }
+      // Review status filter (Pending, Approved, Rejected)
+      if (statusFilter !== 'All' && sell.status !== statusFilter) {
+        return false;
+      }
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const refCode = `#ad-${sell.id.slice(0, 8).toLowerCase()}`;
+        const matchName = sell.customerName?.toLowerCase().includes(q);
+        const matchEmail = sell.customerEmail?.toLowerCase().includes(q);
+        const matchPhone = sell.customerPhone?.toLowerCase().includes(q);
+        const matchProduct = sell.productName?.toLowerCase().includes(q);
+        const matchPlatform = sell.platform?.toLowerCase().includes(q);
+        const matchCity = sell.city?.toLowerCase().includes(q);
+        const matchRef = refCode.includes(q) || sell.id.toLowerCase().includes(q);
+
+        return matchName || matchEmail || matchPhone || matchProduct || matchPlatform || matchCity || matchRef;
+      }
+      return true;
+    });
+  }, [sells, sellTypeFilter, sellAdStatusFilter, statusFilter, searchQuery]);
+
+  const sellStats = useMemo(() => {
+    return {
+      total: sells.length,
+      usedConsoleAds: sells.filter(s => s.listingType === 'Used Console Ad').length,
+      activeAds: sells.filter(s => s.adStatus === 'Active' && !s.isExpired).length,
+      expiredAds: sells.filter(s => s.adStatus === 'Expired' || s.isExpired).length,
+      tradeIns: sells.filter(s => s.listingType === 'General Trade-In').length,
+    };
+  }, [sells]);
 
   return (
     <div className="space-y-6">
@@ -580,61 +687,236 @@ function ServiceTickets() {
             </div>
           )}
 
-          {/* TAB 2: VALUATION / SELL REQUESTS */}
+          {/* TAB 2: USED CONSOLE ADS (30-DAY LIFECYCLE) & VALUATIONS */}
           {activeTab === 'sells' && (
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="border-b border-slate-200/50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20">
-                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Customer</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Proposed Product</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Description</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                    <th className="p-4 text-xs font-bold text-slate-500 uppercase text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                  {sells.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-10 text-center text-sm text-slate-400">
-                        No sell/trade-in requests yet. Submissions from <span className="font-semibold">/sell</span> will appear here.
-                      </td>
-                    </tr>
-                  )}
-                  {sells.map(sell => (
-                    <tr key={sell.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="p-4">
-                        <div className="font-bold text-slate-800 dark:text-white text-sm">{sell.customerName}</div>
-                        <div className="text-xs text-slate-400">{sell.customerEmail}</div>
-                      </td>
-                      <td className="p-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        {sell.productName}
-                      </td>
-                      <td className="p-4 text-sm text-slate-500 dark:text-slate-400 max-w-xs truncate">
-                        {sell.description}
-                      </td>
-                      <td className="p-4 text-xs">
-                        <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                          sell.status === 'Approved'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400'
-                        }`}>
-                          {sell.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenTicket(sell)}
-                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-white text-xs font-semibold rounded-lg"
-                        >
-                          Review valuation
-                        </button>
-                      </td>
-                    </tr>
+            <div className="space-y-4">
+              
+              {/* Sells & Ads Sub-filter Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                  <span className="text-xs font-bold uppercase text-slate-400 shrink-0">Filter:</span>
+                  {[
+                    { id: 'All', label: `All Listings (${sellStats.total})` },
+                    { id: 'Used Console Ad', label: `Used Console Ads (${sellStats.usedConsoleAds})` },
+                    { id: 'General Trade-In', label: `Trade-Ins (${sellStats.tradeIns})` },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSellTypeFilter(tab.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                        sellTypeFilter === tab.id
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-400 shrink-0">Ad Status:</span>
+                  <select
+                    value={sellAdStatusFilter}
+                    onChange={(e) => setSellAdStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none"
+                  >
+                    <option value="All">All 30-Day Statuses</option>
+                    <option value="Active">Active Ads Only</option>
+                    <option value="Expired">Auto-Disabled / Expired</option>
+                    <option value="Disabled">Disabled by Admin</option>
+                    <option value="Sold">Sold</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Sells & Ads Table */}
+              <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-slate-200/50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="p-4">Customer / Seller</th>
+                      <th className="p-4">Console & Hardware Specs</th>
+                      <th className="p-4">Asking Price</th>
+                      <th className="p-4">30-Day Ad Lifecycle</th>
+                      <th className="p-4 text-center">Photos</th>
+                      <th className="p-4">Review Status</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                    {filteredSells.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-12 text-center text-sm text-slate-400">
+                          <Gamepad2 className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-50" />
+                          No used console ads or sell requests found matching current filters.
+                        </td>
+                      </tr>
+                    )}
+                    {filteredSells.map((sell) => {
+                      const daysRemaining = sell.daysRemaining ?? 30;
+                      const isExpired = sell.isExpired || sell.adStatus === 'Expired';
+                      const isUrgent = daysRemaining <= 5 && !isExpired && sell.adStatus === 'Active';
+                      const hasPhotos = Array.isArray(sell.mediaUrls) && sell.mediaUrls.length > 0;
+
+                      return (
+                        <tr key={sell.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                          
+                          {/* Seller Info */}
+                          <td className="p-4 align-top">
+                            <div className="font-bold text-slate-800 dark:text-white text-sm">
+                              {sell.customerName}
+                            </div>
+                            <div className="text-xs text-slate-400">{sell.customerEmail}</div>
+                            {sell.customerPhone && (
+                              <div className="text-xs font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                                <Phone className="w-3 h-3" />
+                                {sell.customerPhone}
+                              </div>
+                            )}
+                            {sell.city && (
+                              <div className="text-[11px] text-slate-500 flex items-center gap-0.5 mt-0.5">
+                                <MapPin className="w-3 h-3" />
+                                {sell.city}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Console Hardware Specifications */}
+                          <td className="p-4 align-top max-w-sm">
+                            <div className="font-bold text-sm text-slate-800 dark:text-slate-100">
+                              {sell.productName}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              {sell.platform && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
+                                  {sell.platform}
+                                </span>
+                              )}
+                              {sell.variant && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                                  {sell.variant}
+                                </span>
+                              )}
+                              {sell.storage && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-300">
+                                  {sell.storage}
+                                </span>
+                              )}
+                              {sell.condition && (
+                                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                                  {sell.condition}
+                                </span>
+                              )}
+                            </div>
+                            {sell.modelNumber && (
+                              <div className="text-[11px] text-slate-400 font-mono mt-1">
+                                Model: {sell.modelNumber}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Asking Price */}
+                          <td className="p-4 align-top">
+                            <div className="font-bold font-mono text-sm text-emerald-600 dark:text-emerald-400">
+                              {sell.price ? formatCurrency(sell.price) : (sell.valuation ? formatCurrency(sell.valuation) : '—')}
+                            </div>
+                            {sell.valuation && sell.price && (
+                              <div className="text-[10px] text-slate-400">
+                                Valued: {formatCurrency(sell.valuation)}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 30-Day Ad Lifecycle Timer & Status */}
+                          <td className="p-4 align-top">
+                            {sell.listingType === 'Used Console Ad' ? (
+                              <div className="space-y-1">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  sell.adStatus === 'Active' && !isExpired
+                                    ? isUrgent
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-500/30'
+                                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-500/30'
+                                    : isExpired
+                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-500/30'
+                                    : sell.adStatus === 'Sold'
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                                    : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+                                }`}>
+                                  <Clock className="w-3 h-3" />
+                                  {sell.adStatus === 'Active' && !isExpired
+                                    ? `${daysRemaining}d Left`
+                                    : isExpired
+                                    ? 'Auto-Disabled (30d Expired)'
+                                    : sell.adStatus}
+                                </span>
+                                {sell.expiresAt && (
+                                  <div className="text-[10px] text-slate-400">
+                                    Expires: {new Date(sell.expiresAt).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400">Trade-In Quote</span>
+                            )}
+                          </td>
+
+                          {/* Photos */}
+                          <td className="p-4 align-top text-center">
+                            {hasPhotos ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 text-xs font-semibold">
+                                <Camera className="w-3.5 h-3.5" />
+                                {sell.mediaUrls.length}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* Review Status */}
+                          <td className="p-4 align-top text-xs">
+                            <span className={`px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] inline-block ${
+                              sell.status === 'Approved'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                                : sell.status === 'Rejected'
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-400'
+                            }`}>
+                              {sell.status}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-4 align-top text-right">
+                            <div className="inline-flex items-center gap-1.5 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenTicket(sell)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-sm transition"
+                              >
+                                Review Ad
+                              </button>
+                              {sell.listingType === 'Used Console Ad' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExtendAd(sell.id)}
+                                  className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition"
+                                  title="Extend 30 Days (Renew timer)"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
             </div>
           )}
 
@@ -879,15 +1161,33 @@ function ServiceTickets() {
                 <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/80 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                      <Gamepad2 className="w-3.5 h-3.5 text-blue-500" /> Device & Intake Details
+                      <Gamepad2 className="w-3.5 h-3.5 text-blue-500" />
+                      {activeTab === 'repairs' ? 'Device & Intake Details' : 'Console Category Details & Specifications'}
                     </span>
-                    {selectedTicket.priority && (
+                    {activeTab === 'repairs' ? (
+                      selectedTicket.priority && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          selectedTicket.priority === 'Urgent'
+                            ? 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        }`}>
+                          {selectedTicket.priority} Priority
+                        </span>
+                      )
+                    ) : (
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        selectedTicket.priority === 'Urgent'
-                          ? 'bg-rose-500/10 text-rose-500 border border-rose-500/30'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        selectedTicket.adStatus === 'Active' && !selectedTicket.isExpired
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                          : selectedTicket.isExpired || selectedTicket.adStatus === 'Expired'
+                          ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}>
-                        {selectedTicket.priority} Priority
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        {selectedTicket.adStatus === 'Active' && !selectedTicket.isExpired
+                          ? `${selectedTicket.daysRemaining ?? 30}d Left (30d Auto-Expire)`
+                          : selectedTicket.isExpired
+                          ? 'Auto-Disabled (30d Expired)'
+                          : selectedTicket.adStatus || '30-Day Listing'}
                       </span>
                     )}
                   </div>
@@ -895,7 +1195,7 @@ function ServiceTickets() {
                   <div className="space-y-2 text-xs">
                     <div>
                       <span className="text-slate-400 block text-[11px]">
-                        {activeTab === 'repairs' ? 'Device Model:' : 'Product Proposed:'}
+                        {activeTab === 'repairs' ? 'Device Model:' : 'Console Title:'}
                       </span>
                       <span className="font-semibold text-slate-800 dark:text-white text-sm">
                         {activeTab === 'repairs' 
@@ -905,7 +1205,7 @@ function ServiceTickets() {
                       </span>
                     </div>
 
-                    {activeTab === 'repairs' && (
+                    {activeTab === 'repairs' ? (
                       <>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -937,9 +1237,131 @@ function ServiceTickets() {
                           </div>
                         </div>
                       </>
+                    ) : (
+                      <>
+                        {/* Console Category Fields Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-200/50 dark:border-slate-800/60">
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Platform:</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedTicket.platform || 'Console'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Brand:</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedTicket.brand || 'Sony'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Variant:</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-200">{selectedTicket.variant || 'Standard'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Condition:</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedTicket.condition || 'Used'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Storage:</span>
+                            <span className="font-mono text-slate-700 dark:text-slate-200">{selectedTicket.storage || 'Standard'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Color:</span>
+                            <span className="text-slate-700 dark:text-slate-200">{selectedTicket.color || 'Standard'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Placement:</span>
+                            <span className="text-slate-700 dark:text-slate-200">{selectedTicket.placement || 'Horizontal'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Model Number:</span>
+                            <span className="font-mono text-slate-700 dark:text-slate-200">{selectedTicket.modelNumber || 'N/A'}</span>
+                          </div>
+                        </div>
+
+                        {selectedTicket.accessoriesIncluded && (
+                          <div className="pt-1">
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold">Included Accessories:</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium">{selectedTicket.accessoriesIncluded}</span>
+                          </div>
+                        )}
+
+                        {selectedTicket.embedMedia && (
+                          <div className="pt-1 flex items-center justify-between">
+                            <span className="text-slate-400 text-[10px] uppercase font-bold">Demo Video:</span>
+                            <a
+                              href={selectedTicket.embedMedia}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold"
+                            >
+                              Watch on YouTube <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
+
+                {/* 30-Day Ad Lifecycle Management Panel (For Sells / Ads) */}
+                {activeTab !== 'repairs' && (
+                  <div className="md:col-span-2 p-4 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-transparent rounded-2xl border border-blue-500/20 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/50 dark:border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-blue-500" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                          30-Day Ad Lifecycle Controls
+                        </h4>
+                      </div>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        Expires: <strong className="text-slate-800 dark:text-white">{selectedTicket.expiresAt ? new Date(selectedTicket.expiresAt).toLocaleDateString() : '30 days after creation'}</strong>
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleExtendAd(selectedTicket.id)}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex items-center gap-1.5 shadow-sm transition"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Extend 30 Days (+30 Days Active)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAdStatus(selectedTicket.id)}
+                          className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition ${
+                            selectedTicket.adStatus === 'Active' && !selectedTicket.isExpired
+                              ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                              : 'bg-blue-600 hover:bg-blue-500 text-white'
+                          }`}
+                        >
+                          {selectedTicket.adStatus === 'Active' && !selectedTicket.isExpired ? (
+                            <>
+                              <PauseCircle className="w-3.5 h-3.5" />
+                              Disable Ad
+                            </>
+                          ) : (
+                            <>
+                              <PlayCircle className="w-3.5 h-3.5" />
+                              Re-Activate Ad
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {selectedTicket.customerPhone && (
+                        <a
+                          href={`https://wa.me/${selectedTicket.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${selectedTicket.customerName}, regarding your console ad on Quickturn (${selectedTicket.productName})...`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 rounded-xl font-bold border border-emerald-500/20 flex items-center gap-1.5 transition"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          Chat with Seller
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               </div>
 
@@ -1085,7 +1507,7 @@ function ServiceTickets() {
                     {copiedSummary ? 'Summary Copied' : 'Copy Ticket Summary'}
                   </button>
 
-                  {activeTab === 'repairs' && (
+                  {activeTab === 'repairs' ? (
                     <button
                       type="button"
                       onClick={() => handleDeleteTicket(selectedTicket.id)}
@@ -1093,6 +1515,15 @@ function ServiceTickets() {
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Delete
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSell(selectedTicket.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete Listing
                     </button>
                   )}
                 </div>

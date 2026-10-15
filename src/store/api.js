@@ -52,6 +52,13 @@ export const storeApi = {
     storeRequest('/services/upload', { method: 'POST', body: formData }),
   submitSell: (data) =>
     storeRequest('/services/sell', { method: 'POST', body: data }),
+  getUsedConsoleAds: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') query.append(key, val);
+    });
+    return storeRequest(`/services/used-console-ads${query.toString() ? `?${query.toString()}` : ''}`);
+  },
   getChatSettings: () => storeRequest('/services/chat-settings'),
   getChatBySession: (sessionId) => storeRequest(`/services/chats/session/${sessionId}`),
   sendChatMessage: (payload) =>

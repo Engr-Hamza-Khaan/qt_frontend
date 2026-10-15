@@ -226,6 +226,12 @@ export const api = {
     },
     updateSell: async (id, sellData) =>
       request(`/services/sell/${id}`, { method: 'PUT', body: sellData }),
+    deleteSell: async (id) =>
+      request(`/services/sell/${id}`, { method: 'DELETE' }),
+    extendSellAd: async (id) =>
+      request(`/services/sell/${id}`, { method: 'PUT', body: { action: 'extend_30_days' } }),
+    toggleSellAd: async (id) =>
+      request(`/services/sell/${id}`, { method: 'PUT', body: { action: 'toggle_active' } }),
     getChats: async () => request('/services/chats'),
     getChatById: async (id) => request(`/services/chats/${id}`),
     replyToChat: async (id, text) =>

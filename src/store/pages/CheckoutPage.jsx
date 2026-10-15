@@ -6,6 +6,20 @@ import { storeApi } from '../api';
 import { formatCurrency } from '../../utils/formatters';
 import { openTermsModal } from '../components/TermsModal';
 
+// ─── Delivery charge table ────────────────────────────────────────────────────
+// Category slug that identifies consoles (adjust if your slug differs)
+const CONSOLE_SLUGS = ['consoles', 'console'];
+
+function getDeliveryCharge(cityZone, items) {
+  const hasConsole = items.some((i) => CONSOLE_SLUGS.includes((i.categorySlug || '').toLowerCase()));
+  if (hasConsole) {
+    return cityZone === 'karachi' ? 500 : 2500;
+  }
+  // Games & Accessories
+  return cityZone === 'karachi' ? 300 : 400;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const navigate = useNavigate();
@@ -19,7 +33,8 @@ function CheckoutPage() {
     street: '', city: '', state: '', postalCode: '', country: 'Pakistan',
     receiverName: '', receiverPhone: '',
   });
-  const [paymentMethod, setPaymentMethod] = useState('Credit Card');
+  const [cityZone, setCityZone] = useState('karachi');
+  const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
   const [customerNotes, setCustomerNotes] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [discount, setDiscount] = useState(null);
@@ -27,7 +42,8 @@ function CheckoutPage() {
 
   const cartItems = items.map((i) => ({ variationId: i.variationId, quantity: i.quantity }));
   const discountAmount = Number(discount?.discountAmount || 0);
-  const total = Math.max(0, subtotal - discountAmount);
+  const deliveryCharge = items.length > 0 ? getDeliveryCharge(cityZone, items) : 0;
+  const total = Math.max(0, subtotal - discountAmount + deliveryCharge);
 
   useEffect(() => {
     setDiscount(null);
@@ -76,6 +92,7 @@ function CheckoutPage() {
         customerNotes,
         couponCode: discount?.code || undefined,
         discountAmount: discountAmount || undefined,
+        deliveryCharge,
       });
 
       if (res.success) {
@@ -146,6 +163,34 @@ function CheckoutPage() {
               <input required className="store-input" placeholder="State" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
               <input required className="store-input" placeholder="Country" value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
             </div>
+
+            {/* ── Delivery Zone ─────────────────────────────── */}
+            <div className="mt-5">
+              <p className="text-sm font-semibold text-white mb-3">Delivery Zone</p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { value: 'karachi', label: '🏙️ Karachi', sub: 'Standard delivery' },
+                  { value: 'out_of_city', label: '📦 Out of City', sub: 'Standard delivery' },
+                ].map(({ value, label, sub }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCityZone(value)}
+                    className={`relative p-3 rounded-xl border text-left transition-all ${
+                      cityZone === value
+                        ? 'border-neon-purple bg-neon-purple/10 text-white'
+                        : 'border-white/15 bg-white/5 text-gray-400 hover:border-white/30'
+                    }`}
+                  >
+                    <span className="block font-semibold text-sm">{label}</span>
+                    <span className="block text-[11px] mt-0.5 opacity-70">{sub}</span>
+                    {cityZone === value && (
+                      <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-neon-purple" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           </section>
 
           <section className="p-4 sm:p-6 store-glass-panel">
@@ -187,7 +232,16 @@ function CheckoutPage() {
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-lg font-bold text-white">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">
+                  Delivery
+                  <span className="ml-1 text-[10px] text-gray-500">
+                    ({cityZone === 'karachi' ? 'Karachi' : 'Out of City'})
+                  </span>
+                </span>
+                <span className="text-white">{formatCurrency(deliveryCharge)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold text-white border-t border-neon-purple/20 pt-2">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
               </div>

@@ -4,6 +4,8 @@ import { Mail, MapPin, Facebook, Instagram, ChevronDown } from 'lucide-react';
 import { BRAND_NAME } from '../../config/brand';
 import { WHATSAPP_DISPLAY, getWhatsAppUrl } from '../config/contact';
 import { openTermsModal } from '../components/TermsModal';
+import qtLogo from '../../assets/QT Logo.png';
+import footerBg from '../../assets/Footer.png';
 
 function FooterAccordionSection({ title, children }) {
   const [open, setOpen] = useState(false);
@@ -38,14 +40,22 @@ function StoreFooter() {
   };
 
   return (
-    <footer className="mt-auto border-t border-blue-500/20" style={{ background: 'rgba(5, 12, 56, 0.98)' }}>
+    <footer
+      className="mt-auto border-t border-blue-500/20 relative overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(5,12,56,0.94) 0%, rgba(5,12,56,0.88) 60%, rgba(5,12,56,0.96) 100%), url(${footerBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center top',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
           {/* Column 1: Brand Info & Socials (5 cols) */}
           <div className="md:col-span-5 pb-4 md:pb-0 border-b md:border-0 border-blue-500/15">
             <Link to="/" className="inline-flex items-center gap-2.5 group mb-4">
               <img
-                src="/logo(white).png"
+                src={qtLogo}
                 alt="Quick Turn Logo"
                 className="h-10 w-auto object-contain drop-shadow-[0_0_12px_rgba(75,125,255,0.3)] group-hover:scale-105 transition-transform"
               />

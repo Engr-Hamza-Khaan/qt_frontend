@@ -1,8 +1,9 @@
 import { BRAND_NAME } from '../../config/brand';
+import qtLogo from '../../assets/QT Logo.png';
 
 const LOGO_SRC = {
-  white: '/logo(white).png',
-  default: '/logo.png',
+  white: qtLogo,
+  default: qtLogo,
 };
 
 const SIZES = {

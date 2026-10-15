@@ -45,6 +45,8 @@ export function CartProvider({ children }) {
           bundle: variation.bundle,
           price: parseFloat(variation.price),
           maxStock: variation.stockQuantity,
+          categorySlug: product.category?.slug || '',
+          categoryName: product.category?.name || '',
           quantity,
         },
       ];
