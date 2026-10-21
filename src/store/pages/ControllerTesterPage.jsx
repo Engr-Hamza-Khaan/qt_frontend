@@ -15,7 +15,9 @@ export default function ControllerTesterPage() {
     triggerHaptic,
     calibrateCenter,
     calibrateRange,
-    saveCalibrationPermanently
+    saveCalibrationPermanently,
+    webHidStatus,
+    connectWebHid
   } = useGamepad();
 
   // Active view: 'tester' or 'calibration'
@@ -100,6 +102,8 @@ export default function ControllerTesterPage() {
                 gamepad={activeGamepad}
                 liveInputLabel={getLiveInputLabel()}
                 onCalibrateClick={() => setCurrentView('calibration')}
+                webHidStatus={webHidStatus}
+                onConnectWebHid={connectWebHid}
               />
             )}
           </div>

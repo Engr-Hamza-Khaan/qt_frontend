@@ -23,12 +23,12 @@ function BrandLogo({
       className={`flex ${isVertical ? 'flex-col items-center text-center gap-3' : 'items-center gap-2.5'} ${className}`}
     >
       <Logo variant={variant} size={logoSize} className="shrink-0" />
-      <div className="min-w-0">
+      {/* <div className="min-w-0">
         <p className={nameClassName}>{BRAND_NAME}</p>
         {showSubtitle && subtitle && (
           <p className={subtitleClassName}>{subtitle}</p>
         )}
-      </div>
+      </div> */}
     </div>
   );
 }

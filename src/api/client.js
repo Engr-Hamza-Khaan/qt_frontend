@@ -194,6 +194,27 @@ export const api = {
       });
       return request(`/vendors/portal/dashboard?${query.toString()}`);
     },
+    stockIn: async (data) =>
+      request('/vendors/stock/in', { method: 'POST', body: data }),
+    stockOut: async (data) =>
+      request('/vendors/stock/out', { method: 'POST', body: data }),
+    getMyStock: async () => request('/vendors/stock/my-stock'),
+    getUsedConsoles: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/vendors/used-consoles${query ? `?${query}` : ''}`);
+    },
+    createUsedConsoleAd: async (data) =>
+      request('/vendors/used-consoles', { method: 'POST', body: data }),
+    updateUsedConsoleAd: async (id, data) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: data }),
+    deleteUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'DELETE' }),
+    extendUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: { action: 'extend_30_days' } }),
+    toggleUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: { action: 'toggle_active' } }),
+    markSoldUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: { action: 'mark_sold' } }),
   },
 
   discounts: {
@@ -205,12 +226,28 @@ export const api = {
   },
 
   services: {
-    getRepairs: async () => request('/services/repairs'),
+    getRepairs: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/services/repairs${query ? `?${query}` : ''}`);
+    },
     updateRepair: async (id, repairData) =>
       request(`/services/repairs/${id}`, { method: 'PUT', body: repairData }),
-    getSells: async () => request('/services/sell'),
+    deleteRepair: async (id) =>
+      request(`/services/repairs/${id}`, { method: 'DELETE' }),
+    uploadMedia: async (formData) =>
+      request('/services/upload', { method: 'POST', body: formData }),
+    getSells: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/services/sell${query ? `?${query}` : ''}`);
+    },
     updateSell: async (id, sellData) =>
       request(`/services/sell/${id}`, { method: 'PUT', body: sellData }),
+    deleteSell: async (id) =>
+      request(`/services/sell/${id}`, { method: 'DELETE' }),
+    extendSellAd: async (id) =>
+      request(`/services/sell/${id}`, { method: 'PUT', body: { action: 'extend_30_days' } }),
+    toggleSellAd: async (id) =>
+      request(`/services/sell/${id}`, { method: 'PUT', body: { action: 'toggle_active' } }),
     getChats: async () => request('/services/chats'),
     getChatById: async (id) => request(`/services/chats/${id}`),
     replyToChat: async (id, text) =>

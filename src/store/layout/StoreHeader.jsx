@@ -6,6 +6,7 @@ import { useWishlist } from '../context/WishlistContext';
 import BrandLogo from '../../components/ui/BrandLogo';
 import { STORE_NAV } from '../config/navigation';
 import SearchBar from '../components/SearchBar';
+import qtLogo from '../../assets/QT Logo.png';
 
 function DesktopNavItem({ item, active, onNavigate }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -76,7 +77,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
 
   const iconElement = (
     <div
-      className={`store-nav-item-inner group flex flex-col items-center justify-center gap-0.5 px-2 sm:px-2.5 py-1 rounded-2xl transition-all duration-200 ${
+      className={`store-nav-item-inner group flex flex-col items-center justify-center gap-0.5 px-2.5 sm:px-3 py-1 rounded-2xl transition-all duration-200 ${
         active ? 'store-nav-item-inner--active' : 'store-nav-item-inner--default'
       }`}
     >
@@ -93,7 +94,9 @@ function DesktopNavItem({ item, active, onNavigate }) {
           <img
             src={iconSrc}
             alt={item.label}
-            className={`w-6 h-6 sm:w-7 sm:h-7 object-contain transition-all duration-200 group-hover:scale-105 ${
+            className={`${
+              item.id === 'controller-tester' ? 'w-5 h-5 sm:w-[22px] sm:h-[22px]' : 'w-6 h-6 sm:w-7 sm:h-7'
+            } object-contain transition-all duration-200 group-hover:scale-105 ${
               active
                 ? 'brightness-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]'
                 : 'brightness-95 opacity-90 group-hover:opacity-100 group-hover:brightness-110 drop-shadow-[0_0_4px_rgba(255,255,255,0.2)]'
@@ -388,18 +391,18 @@ function StoreHeader({ embedded = false }) {
           <div className="flex items-center justify-between gap-2 sm:gap-4 overflow-visible">
             <Link to="/" className="shrink-0 flex items-center gap-2 sm:gap-2.5 group" onClick={closeMenus} aria-label="Quick Turn Home">
               <img
-                src="/logo(white).png"
+                src={qtLogo}
                 alt="Quick Turn Logo"
                 className="h-8 sm:h-9 md:h-10 w-auto object-contain drop-shadow-[0_0_12px_rgba(75,125,255,0.4)] group-hover:scale-105 transition-transform"
               />
-              <div className="flex flex-col justify-center">
+              {/* <div className="flex flex-col justify-center">
                 <span className="font-outfit font-black text-sm sm:text-base md:text-lg text-white tracking-wider uppercase leading-none group-hover:text-blue-200 transition-colors">
                   QUICK TURN
                 </span>
                 <span className="text-[7.5px] sm:text-[8.5px] md:text-[9px] text-gray-300 tracking-wider font-medium leading-tight mt-0.5 whitespace-nowrap">
                   Where Deals Turn Right.
                 </span>
-              </div>
+              </div> */}
             </Link>
 
             <div className="hidden lg:flex flex-1 justify-center min-w-0 px-2">

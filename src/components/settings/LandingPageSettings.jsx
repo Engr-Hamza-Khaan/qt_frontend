@@ -18,9 +18,78 @@ import {
   Megaphone,
   Gamepad2,
   Check,
+  SlidersHorizontal,
+  Plus,
+  Trash2,
+  Copy,
+  Clock,
+  Navigation,
+  ArrowRight,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import LoadingSpinner from '../ui/LoadingSpinner';
+
+const DEFAULT_SLIDER_SLIDES = [
+  {
+    id: 'slide-1',
+    badge: '• CERTIFIED • TESTED • READY TO SHIP',
+    headline1: 'NEXT-GEN',
+    headline2: 'PLAYSTATION 5,',
+    headlineHollow: 'READY TO PLAY.',
+    subtitle: 'Every console is inspected, stress-tested, and backed by a 90-day warranty before it reaches your door. Trade in your old gear anytime.',
+    primaryBtnText: 'Shop PS5 Consoles',
+    primaryBtnLink: '/shop?categorySlug=consoles&search=playstation',
+    secondaryBtnText: 'Sell Your Console',
+    secondaryBtnLink: '/sell',
+    image: '/SLim.png',
+    alt: 'PlayStation 5 Slim Console',
+    activeColor: 'text-[#0070d1]',
+    glowColor: 'from-[#0070d1]/45 via-[#0070d1]/25 to-transparent',
+    ambientGlow: 'bg-[#0070d1]/35',
+  },
+  {
+    id: 'slide-2',
+    badge: '• POWER YOUR DREAMS • 4K GAMING',
+    headline1: 'XBOX SERIES X|S',
+    headline2: 'NEXT-LEVEL SPEED,',
+    headlineHollow: 'UNBEATABLE VALUE.',
+    subtitle: 'Experience true 4K gaming and lightning fast load times with pre-owned and brand-new Xbox Series consoles with full warranty.',
+    primaryBtnText: 'Shop Xbox Series',
+    primaryBtnLink: '/shop?categorySlug=consoles&search=xbox',
+    secondaryBtnText: 'Trade-In & Upgrade',
+    secondaryBtnLink: '/sell',
+    image: '/Xbox Both.png',
+    alt: 'Xbox Series X and Series S Consoles',
+    activeColor: 'text-[#107c10]',
+    glowColor: 'from-[#107c10]/40 via-[#107c10]/20 to-transparent',
+    ambientGlow: 'bg-[#107c10]/30',
+  },
+  {
+    id: 'slide-3',
+    badge: '• HYBRID GAMING • VIBRANT OLED',
+    headline1: 'NINTENDO SWITCH',
+    headline2: 'PLAY ANYWHERE,',
+    headlineHollow: 'ANYTIME WITH FRIENDS.',
+    subtitle: 'Vibrant 7-inch OLED screen and portable fun for everyone. Check out our certified handheld consoles and games catalog.',
+    primaryBtnText: 'Shop Nintendo Switch',
+    primaryBtnLink: '/shop?categorySlug=consoles&search=nintendo',
+    secondaryBtnText: 'Browse Games',
+    secondaryBtnLink: '/shop?categorySlug=games',
+    image: '/Nintendo PNG.png',
+    alt: 'Nintendo Switch Console',
+    activeColor: 'text-[#e60012]',
+    glowColor: 'from-[#e60012]/45 via-[#e60012]/20 to-transparent',
+    ambientGlow: 'bg-[#e60012]/35',
+  },
+];
+
+const DEFAULT_SLIDER_CONFIG = {
+  autoplay: true,
+  autoplayInterval: 5000,
+  showArrows: true,
+  showDots: true,
+  slides: DEFAULT_SLIDER_SLIDES,
+};
 
 const DEFAULT_LANDING_PAGE = {
   sectionsOrder: [
@@ -72,6 +141,8 @@ const DEFAULT_LANDING_PAGE = {
         sellLink: '/sell',
       },
     ],
+    useStandardSlider: false,
+    sliderConfig: DEFAULT_SLIDER_CONFIG,
   },
   trustBar: [
     { icon: 'shield', title: 'Genuine Products', desc: '100% authentic warranty' },
@@ -124,6 +195,7 @@ const DEFAULT_LANDING_PAGE = {
 const TABS = [
   { id: 'order', label: 'Section Order', icon: Layers },
   { id: 'hero', label: 'Hero & Text', icon: Sparkles },
+  { id: 'slider', label: 'Standard Slider (Carousel)', icon: SlidersHorizontal },
   { id: 'platforms', label: 'Hero Platforms & Images', icon: Gamepad2 },
   { id: 'products', label: 'Product Headings', icon: ShoppingBag },
   { id: 'banners', label: 'Promo & CTA Banners', icon: Megaphone },
@@ -152,6 +224,14 @@ export default function LandingPageSettings() {
           hero: {
             ...DEFAULT_LANDING_PAGE.hero,
             ...(res.data.hero || {}),
+            useStandardSlider: Boolean(res.data.hero?.useStandardSlider),
+            sliderConfig: {
+              ...DEFAULT_SLIDER_CONFIG,
+              ...(res.data.hero?.sliderConfig || {}),
+              slides: (Array.isArray(res.data.hero?.sliderConfig?.slides) && res.data.hero.sliderConfig.slides.length > 0)
+                ? res.data.hero.sliderConfig.slides
+                : DEFAULT_SLIDER_CONFIG.slides,
+            },
           },
           productHeadings: {
             ...DEFAULT_LANDING_PAGE.productHeadings,
@@ -198,6 +278,93 @@ export default function LandingPageSettings() {
       setForm(DEFAULT_LANDING_PAGE);
       setFeedback({ type: 'success', message: 'Default landing page configuration restored. Click "Save Changes" to apply.' });
     }
+  };
+
+  // Standard Slider Helpers
+  const toggleStandardSlider = () => {
+    setForm((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        useStandardSlider: !prev.hero.useStandardSlider,
+      },
+    }));
+  };
+
+  const updateSliderConfig = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        sliderConfig: {
+          ...(prev.hero.sliderConfig || DEFAULT_SLIDER_CONFIG),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const updateSlide = (index, field, value) => {
+    const currentSlides = [...(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES)];
+    currentSlides[index] = {
+      ...currentSlides[index],
+      [field]: value,
+    };
+    updateSliderConfig('slides', currentSlides);
+  };
+
+  const addSlide = () => {
+    const currentSlides = [...(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES)];
+    const newSlide = {
+      id: `slide-${Date.now()}`,
+      badge: '• NEW ARRIVAL • EXCLUSIVE DEAL',
+      headline1: 'NEW GAMING',
+      headline2: 'COLLECTION,',
+      headlineHollow: 'LEVEL UP TODAY.',
+      subtitle: 'Explore our latest arrivals of high performance consoles, premium controllers, and gaming essentials.',
+      primaryBtnText: 'Shop Now',
+      primaryBtnLink: '/shop',
+      secondaryBtnText: 'Explore More',
+      secondaryBtnLink: '/shop',
+      image: '/SLim.png',
+      alt: 'Gaming Collection',
+      activeColor: 'text-purple-500',
+      glowColor: 'from-purple-600/45 via-purple-600/25 to-transparent',
+      ambientGlow: 'bg-purple-600/35',
+    };
+    updateSliderConfig('slides', [...currentSlides, newSlide]);
+  };
+
+  const removeSlide = (index) => {
+    const currentSlides = [...(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES)];
+    if (currentSlides.length <= 1) {
+      alert('At least one slide is required in the slider.');
+      return;
+    }
+    const filtered = currentSlides.filter((_, i) => i !== index);
+    updateSliderConfig('slides', filtered);
+  };
+
+  const duplicateSlide = (index) => {
+    const currentSlides = [...(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES)];
+    const copy = {
+      ...currentSlides[index],
+      id: `slide-${Date.now()}`,
+      headline1: `${currentSlides[index].headline1 || ''} (Copy)`,
+    };
+    const updated = [...currentSlides];
+    updated.splice(index + 1, 0, copy);
+    updateSliderConfig('slides', updated);
+  };
+
+  const moveSlide = (index, direction) => {
+    const currentSlides = [...(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES)];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= currentSlides.length) return;
+    const temp = currentSlides[index];
+    currentSlides[index] = currentSlides[targetIndex];
+    currentSlides[targetIndex] = temp;
+    updateSliderConfig('slides', currentSlides);
   };
 
   // Section Order Helpers
@@ -470,6 +637,54 @@ export default function LandingPageSettings() {
             </p>
           </div>
 
+          {/* Standard Slider Mode Switch Banner */}
+          <div className="p-4 sm:p-5 rounded-2xl border border-purple-200/80 dark:border-purple-800/80 bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-transparent">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                    Hero Display Mode: Standard Slider Option
+                  </span>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                    form.hero.useStandardSlider
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                      : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+                  }`}>
+                    {form.hero.useStandardSlider ? 'Standard Slider Enabled' : 'Console Showcase Active'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl">
+                  {form.hero.useStandardSlider
+                    ? 'Standard Slider is ENABLED. The homepage hero is displaying the multi-slide carousel. You can configure individual slides, autoplay, and navigation arrows in the "Standard Slider" tab.'
+                    : 'Interactive 3-Platform Showcase is currently active. Toggle this switch ON to switch the hero section into a full-featured standard image/banner slider.'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.hero.useStandardSlider)}
+                    onChange={toggleStandardSlider}
+                    className="sr-only peer"
+                  />
+                  <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 dark:peer-checked:bg-purple-500" />
+                </label>
+
+                {form.hero.useStandardSlider && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('slider')}
+                    className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span>Manage Slides</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Pill Badge */}
             <div className="md:col-span-2 space-y-2">
@@ -567,6 +782,444 @@ export default function LandingPageSettings() {
                 placeholder="Sell Your Console"
                 className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Standard Slider (Carousel) */}
+      {activeTab === 'slider' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Slider Master Status Card */}
+          <div className="glass-card p-5 sm:p-6 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200/80 dark:border-slate-800/80 gap-3">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    Standard Slider (Carousel) Settings
+                  </h2>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                    form.hero.useStandardSlider
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                      : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
+                  }`}>
+                    {form.hero.useStandardSlider ? 'Enabled on Storefront' : 'Disabled'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Control whether the homepage hero displays a standard banner slider, and adjust autoplay, navigation controls, and timing.
+                </p>
+              </div>
+
+              {/* Master Enable/Disable Switch */}
+              <div className="flex items-center gap-3 bg-slate-100/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 self-start sm:self-auto">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Enable Slider:
+                </span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.hero.useStandardSlider)}
+                    onChange={toggleStandardSlider}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 dark:peer-checked:bg-purple-500" />
+                </label>
+              </div>
+            </div>
+
+            {/* Slider Behavior Controls Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              {/* Autoplay Toggle */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Auto-Advance
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Automatically transition slides
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={form.hero.sliderConfig?.autoplay !== false}
+                    onChange={(e) => updateSliderConfig('autoplay', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 dark:peer-checked:bg-purple-500" />
+                </label>
+              </div>
+
+              {/* Navigation Arrows Toggle */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Arrow Buttons
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Show Next & Prev arrows
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={form.hero.sliderConfig?.showArrows !== false}
+                    onChange={(e) => updateSliderConfig('showArrows', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 dark:peer-checked:bg-purple-500" />
+                </label>
+              </div>
+
+              {/* Indicator Dots Toggle */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                    Indicator Dots
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Bottom slide pagination dots
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={form.hero.sliderConfig?.showDots !== false}
+                    onChange={(e) => updateSliderConfig('showDots', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600 dark:peer-checked:bg-purple-500" />
+                </label>
+              </div>
+
+              {/* Slide Duration / Interval */}
+              <div className="sm:col-span-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      Slide Display Duration
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Amount of time each slide is displayed before auto-advancing
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {[3000, 5000, 7000, 10000].map((ms) => (
+                      <button
+                        key={ms}
+                        type="button"
+                        onClick={() => updateSliderConfig('autoplayInterval', ms)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
+                          (Number(form.hero.sliderConfig?.autoplayInterval) || 5000) === ms
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {ms / 1000}s
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Slides Manager List Card */}
+          <div className="glass-card p-5 sm:p-6 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Carousel Slides ({(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES).length})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Customize the title, badges, image, and buttons for each slide in the standard slider.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={addSlide}
+                className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-purple-500/20"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Slide</span>
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {(form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES).map((slide, idx) => {
+                const slidesList = form.hero.sliderConfig?.slides || DEFAULT_SLIDER_SLIDES;
+                return (
+                  <div
+                    key={slide.id || idx}
+                    className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-4"
+                  >
+                    {/* Slide Header Toolbar */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <div>
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                            {slide.headline1 ? `${slide.headline1} ${slide.headline2 || ''}` : `Slide ${idx + 1}`}
+                          </h4>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            {slide.badge || 'No badge'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Slide Action Buttons */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => moveSlide(idx, -1)}
+                          disabled={idx === 0}
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                          title="Move Slide Up"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveSlide(idx, 1)}
+                          disabled={idx === slidesList.length - 1}
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                          title="Move Slide Down"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => duplicateSlide(idx)}
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                          title="Duplicate Slide"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeSlide(idx)}
+                          disabled={slidesList.length <= 1}
+                          className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-30 disabled:cursor-not-allowed transition"
+                          title="Delete Slide"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Slide Edit Form Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                      {/* Image Preview & Quick Switcher */}
+                      <div className="md:col-span-3 flex flex-col items-center justify-center p-3 rounded-xl bg-slate-950 border border-slate-800 text-center min-h-[160px]">
+                        {slide.image ? (
+                          <img
+                            src={slide.image}
+                            alt={slide.headline1 || 'Slide Image'}
+                            className="max-h-24 object-contain drop-shadow"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://placehold.co/200x150/1e293b/ffffff?text=Image+Not+Found';
+                            }}
+                          />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-slate-600" />
+                        )}
+                        <span className="text-[10px] text-slate-400 mt-2 truncate max-w-full font-mono">
+                          {slide.image || 'No image'}
+                        </span>
+                        {/* Quick Presets */}
+                        <div className="flex flex-wrap gap-1 mt-2 justify-center">
+                          {['/SLim.png', '/Xbox Both.png', '/Nintendo PNG.png'].map((path) => (
+                            <button
+                              key={path}
+                              type="button"
+                              onClick={() => updateSlide(idx, 'image', path)}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-purple-600 hover:text-white transition"
+                            >
+                              {path.includes('SLim') ? 'PS5' : path.includes('Xbox') ? 'Xbox' : 'Switch'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Fields */}
+                      <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        {/* Pill Badge */}
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Pill Badge Text
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.badge || ''}
+                            onChange={(e) => updateSlide(idx, 'badge', e.target.value)}
+                            placeholder="• CERTIFIED • TESTED • READY TO SHIP"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs"
+                          />
+                        </div>
+
+                        {/* Headline Line 1 */}
+                        <div className="space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Headline Line 1
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.headline1 || ''}
+                            onChange={(e) => updateSlide(idx, 'headline1', e.target.value)}
+                            placeholder="NEXT-GEN"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs font-bold"
+                          />
+                        </div>
+
+                        {/* Headline Line 2 */}
+                        <div className="space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Headline Line 2
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.headline2 || ''}
+                            onChange={(e) => updateSlide(idx, 'headline2', e.target.value)}
+                            placeholder="PLAYSTATION 5,"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs font-bold"
+                          />
+                        </div>
+
+                        {/* Hollow Accent Line 3 */}
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Neon Hollow Accent Headline (Line 3)
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.headlineHollow || ''}
+                            onChange={(e) => updateSlide(idx, 'headlineHollow', e.target.value)}
+                            placeholder="READY TO PLAY."
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs font-mono"
+                          />
+                        </div>
+
+                        {/* Subtitle */}
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Slide Subtitle Description
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={slide.subtitle || ''}
+                            onChange={(e) => updateSlide(idx, 'subtitle', e.target.value)}
+                            placeholder="Describe your gaming offer or guarantee..."
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs"
+                          />
+                        </div>
+
+                        {/* Image URL */}
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Product Image URL
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.image || ''}
+                            onChange={(e) => updateSlide(idx, 'image', e.target.value)}
+                            placeholder="e.g. /SLim.png or public image URL"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs font-mono"
+                          />
+                        </div>
+
+                        {/* Primary Button */}
+                        <div className="space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Primary Button Label
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.primaryBtnText || ''}
+                            onChange={(e) => updateSlide(idx, 'primaryBtnText', e.target.value)}
+                            placeholder="Shop Now"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Primary Button Link
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.primaryBtnLink || ''}
+                            onChange={(e) => updateSlide(idx, 'primaryBtnLink', e.target.value)}
+                            placeholder="/shop?categorySlug=consoles"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs"
+                          />
+                        </div>
+
+                        {/* Secondary Button */}
+                        <div className="space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Secondary Button Label
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.secondaryBtnText || ''}
+                            onChange={(e) => updateSlide(idx, 'secondaryBtnText', e.target.value)}
+                            placeholder="Sell Your Console"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Secondary Button Link
+                          </label>
+                          <input
+                            type="text"
+                            value={slide.secondaryBtnLink || ''}
+                            onChange={(e) => updateSlide(idx, 'secondaryBtnLink', e.target.value)}
+                            placeholder="/sell"
+                            className="input-field dark:bg-slate-950 dark:border-slate-800 dark:text-white text-xs"
+                          />
+                        </div>
+
+                        {/* Ambient Glow Theme preset selector */}
+                        <div className="sm:col-span-2 space-y-1.5 pt-1">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                            Ambient Glow Color Preset
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { label: 'PlayStation Blue', ambient: 'bg-[#0070d1]/35', active: 'text-[#0070d1]' },
+                              { label: 'Xbox Green', ambient: 'bg-[#107c10]/30', active: 'text-[#107c10]' },
+                              { label: 'Nintendo Red', ambient: 'bg-[#e60012]/35', active: 'text-[#e60012]' },
+                              { label: 'Cyberpunk Purple', ambient: 'bg-purple-600/35', active: 'text-purple-500' },
+                              { label: 'Amber Gold', ambient: 'bg-amber-500/35', active: 'text-amber-400' },
+                            ].map((preset) => (
+                              <button
+                                key={preset.label}
+                                type="button"
+                                onClick={() => {
+                                  updateSlide(idx, 'ambientGlow', preset.ambient);
+                                  updateSlide(idx, 'activeColor', preset.active);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                                  slide.ambientGlow === preset.ambient
+                                    ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                {preset.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

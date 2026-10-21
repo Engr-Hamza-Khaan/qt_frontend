@@ -40,9 +40,9 @@ function Sidebar({ collapsed, mobileOpen, onMobileClose, user, onLogout }) {
           variant={theme === 'dark' ? 'white' : 'default'}
           logoSize="md"
           collapsed={collapsed && !mobileOpen}
-          subtitle="Admin Panel"
+          // subtitle="Admin Panel"
           nameClassName="text-lg font-bold text-slate-800 dark:text-white leading-none"
-          subtitleClassName="text-xs text-slate-500 dark:text-slate-400 mt-0.5 normal-case tracking-normal"
+          // subtitleClassName="text-xs text-slate-500 dark:text-slate-400 mt-0.5 normal-case tracking-normal"
         />
         <button
           type="button"

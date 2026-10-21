@@ -95,6 +95,24 @@ export default function AnnouncementBar({ settings: propsSettings, className = '
     : {};
 
   const isExternalLink = link.startsWith('http://') || link.startsWith('https://');
+  const isContactAction =
+    link === '#contact-details' ||
+    link === '#contact' ||
+    link === '#footer' ||
+    link === 'contact' ||
+    (!link && (linkText || '').toLowerCase().includes('contact')) ||
+    (link || '').toLowerCase().includes('contact') ||
+    (linkText || '').toLowerCase().includes('contact');
+
+  const handleActionClick = (e) => {
+    if (isContactAction) {
+      if (e) e.preventDefault();
+      const el = document.getElementById('contact-details') || document.querySelector('footer');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   return (
     <div
@@ -111,8 +129,17 @@ export default function AnnouncementBar({ settings: propsSettings, className = '
 
           <span className="truncate max-w-[85vw] sm:max-w-none">{text}</span>
 
-          {link && (
-            isExternalLink ? (
+          {(link || linkText) && (
+            isContactAction ? (
+              <button
+                type="button"
+                onClick={handleActionClick}
+                className={`inline-flex items-center gap-1 px-3 py-1 text-[11px] sm:text-xs font-bold rounded-full transition-all shrink-0 cursor-pointer ${presetTheme?.btn || 'bg-white text-black hover:bg-gray-100'}`}
+              >
+                {linkText || 'Contact Us'}
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            ) : isExternalLink ? (
               <a
                 href={link}
                 target="_blank"

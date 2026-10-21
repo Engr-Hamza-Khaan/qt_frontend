@@ -9,6 +9,7 @@ import {
   FileText,
   Layers,
   LayoutTemplate,
+  Gamepad2,
 } from 'lucide-react';
 import {
   canAccessDashboard,
@@ -21,6 +22,7 @@ import {
 export const PAGE_TITLES = {
   dashboard: { title: 'Dashboard', subtitle: 'Overview of your store performance' },
   'vendor-portal': { title: 'Vendor Portal', subtitle: 'Your supplier dashboard and earnings' },
+  'vendor-used-consoles': { title: 'Used Console Ads', subtitle: 'Manage your 30-day auto-expiring used console listings' },
   products: { title: 'Products', subtitle: 'Manage catalog, variations and inventory' },
   orders: { title: 'Orders', subtitle: 'Track and fulfill customer orders' },
   invoices: { title: 'Invoice Management', subtitle: 'Generate, manage, customize, and print manual invoices' },
@@ -49,6 +51,13 @@ const ALL_NAV_ITEMS = [
     icon: LayoutDashboard,
     label: 'My Portal',
     roles: (role) => isVendor(role),
+  },
+  {
+    id: 'vendor-used-consoles',
+    path: '/admin/vendor-used-consoles',
+    icon: Gamepad2,
+    label: 'Used Console Ads',
+    roles: (role) => isVendor(role) || isStaffOrAbove(role),
   },
   {
     id: 'ecommerce',

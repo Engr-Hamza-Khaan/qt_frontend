@@ -1,4 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  initExistingSonyHidDevice,
+  requestSonyWebHid,
+  disconnectSonyWebHid,
+  subscribeWebHidTouches,
+  subscribeWebHidStatus,
+  isWebHidSupported,
+  triggerSonyHaptic
+} from './sonyWebHid';
 
 const CALIBRATION_KEY = 'qt_controller_calibration';
 
@@ -89,19 +98,99 @@ export function detectGamepadDetails(id = '') {
   };
 }
 
-function snapshotGamepad(gamepad, calibration) {
+function snapshotGamepad(gamepad, calibration, webHidTouchState) {
   if (!gamepad) return null;
 
   const rawAxes = [...gamepad.axes];
   const cOffset = calibration?.centerOffset || { left: { x: 0, y: 0 }, right: { x: 0, y: 0 } };
+  const rScale = calibration?.rangeScale || { left: { x: 1, y: 1 }, right: { x: 1, y: 1 } };
 
-  // Apply calibration offsets
-  const leftX = (rawAxes[0] ?? 0) - (cOffset.left?.x ?? 0);
-  const leftY = (rawAxes[1] ?? 0) - (cOffset.left?.y ?? 0);
-  const rightX = (rawAxes[2] ?? 0) - (cOffset.right?.x ?? 0);
-  const rightY = (rawAxes[3] ?? 0) - (cOffset.right?.y ?? 0);
+  // Apply calibration offsets and range scale
+  const leftX = ((rawAxes[0] ?? 0) - (cOffset.left?.x ?? 0)) * (rScale.left?.x ?? 1);
+  const leftY = ((rawAxes[1] ?? 0) - (cOffset.left?.y ?? 0)) * (rScale.left?.y ?? 1);
+  const rightX = ((rawAxes[2] ?? 0) - (cOffset.right?.x ?? 0)) * (rScale.right?.x ?? 1);
+  const rightY = ((rawAxes[3] ?? 0) - (cOffset.right?.y ?? 0)) * (rScale.right?.y ?? 1);
 
   const clamp = (v) => Math.max(-1, Math.min(1, v));
+
+  // Extract Touches: Priority 1 from WebHID
+  const touches = [];
+  if (webHidTouchState?.touch0?.active) {
+    touches.push({
+      index: 0,
+      active: true,
+      id: webHidTouchState.touch0.id,
+      x: webHidTouchState.touch0.x,
+      y: webHidTouchState.touch0.y,
+      normalizedX: webHidTouchState.touch0.normalizedX,
+      normalizedY: webHidTouchState.touch0.normalizedY
+    });
+  }
+  if (webHidTouchState?.touch1?.active) {
+    touches.push({
+      index: 1,
+      active: true,
+      id: webHidTouchState.touch1.id,
+      x: webHidTouchState.touch1.x,
+      y: webHidTouchState.touch1.y,
+      normalizedX: webHidTouchState.touch1.normalizedX,
+      normalizedY: webHidTouchState.touch1.normalizedY
+    });
+  }
+
+  // Priority 2: Gamepad API native / experimental touchEvents or touches
+  if (touches.length === 0) {
+    if (Array.isArray(gamepad.touchEvents) && gamepad.touchEvents.length > 0) {
+      for (let i = 0; i < gamepad.touchEvents.length; i++) {
+        const t = gamepad.touchEvents[i];
+        const rawX = Array.isArray(t.position) ? t.position[0] : (t.position?.x ?? 0);
+        const rawY = Array.isArray(t.position) ? t.position[1] : (t.position?.y ?? 0);
+        const normX = (rawX >= -1 && rawX <= 1) ? (rawX + 1) / 2 : (rawX / (t.surfaceDimensions?.[0] || 1920));
+        const normY = (rawY >= -1 && rawY <= 1) ? (rawY + 1) / 2 : (rawY / (t.surfaceDimensions?.[1] || 1080));
+        touches.push({
+          index: i,
+          active: true,
+          id: t.touchId ?? i,
+          x: Math.round(normX * 1920),
+          y: Math.round(normY * 1080),
+          normalizedX: Math.min(1, Math.max(0, normX)),
+          normalizedY: Math.min(1, Math.max(0, normY))
+        });
+      }
+    } else if (Array.isArray(gamepad.touches) && gamepad.touches.length > 0) {
+      for (let i = 0; i < gamepad.touches.length; i++) {
+        const t = gamepad.touches[i];
+        const normX = t.normalizedX ?? (t.x !== undefined ? t.x / 1920 : 0.5);
+        const normY = t.normalizedY ?? (t.y !== undefined ? t.y / 1080 : 0.5);
+        touches.push({
+          index: i,
+          active: true,
+          id: t.id ?? i,
+          x: Math.round(normX * 1920),
+          y: Math.round(normY * 1080),
+          normalizedX: Math.min(1, Math.max(0, normX)),
+          normalizedY: Math.min(1, Math.max(0, normY))
+        });
+      }
+    }
+  }
+
+  // Clone buttons and inject WebHID touchpad click (Button 17) if clicked via WebHID
+  const buttons = gamepad.buttons.map((b) => ({
+    pressed: b.pressed,
+    value: b.value,
+  }));
+
+  if (webHidTouchState?.click) {
+    if (buttons[17]) {
+      buttons[17] = { pressed: true, value: 1 };
+    } else {
+      while (buttons.length < 17) {
+        buttons.push({ pressed: false, value: 0 });
+      }
+      buttons[17] = { pressed: true, value: 1 };
+    }
+  }
 
   return {
     index: gamepad.index,
@@ -109,10 +198,7 @@ function snapshotGamepad(gamepad, calibration) {
     mapping: gamepad.mapping,
     connected: gamepad.connected,
     timestamp: gamepad.timestamp,
-    buttons: gamepad.buttons.map((b) => ({
-      pressed: b.pressed,
-      value: b.value,
-    })),
+    buttons,
     axes: [
       clamp(leftX),
       clamp(leftY),
@@ -121,6 +207,7 @@ function snapshotGamepad(gamepad, calibration) {
       ...rawAxes.slice(4)
     ],
     rawAxes,
+    touches,
     details: detectGamepadDetails(gamepad.id)
   };
 }
@@ -134,10 +221,34 @@ export function useGamepad() {
   const [gamepads, setGamepads] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [calibration, setCalibration] = useState(loadCalibration);
+  const [webHidStatus, setWebHidStatus] = useState('disconnected');
+
+  const webHidTouchRef = useRef({
+    touch0: { active: false, id: 0, x: 0, y: 0, normalizedX: 0.5, normalizedY: 0.5 },
+    touch1: { active: false, id: 0, x: 0, y: 0, normalizedX: 0.5, normalizedY: 0.5 },
+    click: false,
+    hasTouches: false,
+    fingerCount: 0
+  });
 
   const rafRef = useRef(null);
   const calibrationRef = useRef(calibration);
   calibrationRef.current = calibration;
+
+  // Auto-connect previously paired WebHID Sony controllers & listen to touch events
+  useEffect(() => {
+    initExistingSonyHidDevice();
+    const unsubStatus = subscribeWebHidStatus((status) => {
+      setWebHidStatus(status);
+    });
+    const unsubTouches = subscribeWebHidTouches((touchState) => {
+      webHidTouchRef.current = touchState;
+    });
+    return () => {
+      unsubStatus();
+      unsubTouches();
+    };
+  }, []);
 
   // Poll real gamepads on animation frame
   useEffect(() => {
@@ -155,9 +266,15 @@ export function useGamepad() {
           fp += `${gp.axes.map((a) => a.toFixed(3)).join(',')};`;
         }
 
+        // Add WebHID touches to fingerprint so touch updates render smoothly at 60-120fps
+        const wht = webHidTouchRef.current;
+        if (wht?.hasTouches || wht?.click) {
+          fp += `hid:${wht.touch0.active ? `${wht.touch0.x},${wht.touch0.y}` : ''}|${wht.touch1.active ? `${wht.touch1.x},${wht.touch1.y}` : ''}|${wht.click ? 1 : 0};`;
+        }
+
         if (fp !== prevFingerprint) {
           prevFingerprint = fp;
-          const snapshots = connectedRaw.map((gp) => snapshotGamepad(gp, calibrationRef.current));
+          const snapshots = connectedRaw.map((gp) => snapshotGamepad(gp, calibrationRef.current, webHidTouchRef.current));
           setGamepads(snapshots);
         }
       } else if (prevFingerprint !== 'empty') {
@@ -171,7 +288,7 @@ export function useGamepad() {
     const onConnected = (e) => {
       console.log('Gamepad connected:', e.gamepad.id);
       prevFingerprint = '';
-      const snapshots = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current));
+      const snapshots = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current, webHidTouchRef.current));
       setGamepads(snapshots);
       setActiveIndex(e.gamepad.index);
     };
@@ -179,7 +296,7 @@ export function useGamepad() {
     const onDisconnected = (e) => {
       console.log('Gamepad disconnected:', e.gamepad.id);
       prevFingerprint = '';
-      const snapshots = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current));
+      const snapshots = getConnectedGamepads().map((gp) => snapshotGamepad(gp, calibrationRef.current, webHidTouchRef.current));
       setGamepads(snapshots);
     };
 
@@ -198,23 +315,51 @@ export function useGamepad() {
   const activeGamepad = gamepads.find((gp) => gp.index === activeIndex) ?? gamepads[0] ?? null;
 
   // Trigger vibration / haptic rumble on physical controller
-  const triggerHaptic = useCallback((duration = 400, weakMagnitude = 1.0, strongMagnitude = 1.0) => {
+  const triggerHaptic = useCallback((duration = 500, weakMagnitude = 1.0, strongMagnitude = 1.0) => {
+    let triggered = false;
+
+    // 1. Hardware WebHID rumble (direct native support for PS5 DualSense and PS4 DualShock)
+    try {
+      triggerSonyHaptic(duration, weakMagnitude, strongMagnitude)
+        .then((res) => {
+          if (res) triggered = true;
+        })
+        .catch(() => {});
+    } catch (e) {
+      // ignore
+    }
+
+    // 2. Standard Gamepad API vibrationActuator (works for Xbox and supported browser controllers)
     try {
       const connected = getConnectedGamepads();
       const currentGp = connected[activeIndex] || connected[0];
       if (currentGp?.vibrationActuator && typeof currentGp.vibrationActuator.playEffect === 'function') {
-        currentGp.vibrationActuator.playEffect('dual-rumble', {
-          startDelay: 0,
-          duration,
-          weakMagnitude,
-          strongMagnitude
-        });
-        return true;
+        currentGp.vibrationActuator
+          .playEffect('dual-rumble', {
+            startDelay: 0,
+            duration,
+            weakMagnitude,
+            strongMagnitude
+          })
+          .then(() => {
+            triggered = true;
+          })
+          .catch((err) => {
+            console.warn('vibrationActuator.playEffect error:', err);
+          });
+        triggered = true;
+      } else if (currentGp?.hapticActuators && currentGp.hapticActuators.length > 0) {
+        for (const act of currentGp.hapticActuators) {
+          if (typeof act.pulse === 'function') {
+            act.pulse(strongMagnitude, duration);
+            triggered = true;
+          }
+        }
       }
     } catch (err) {
       console.warn('Vibration API error:', err);
     }
-    return false;
+    return triggered;
   }, [activeIndex]);
 
   // Calibration functions
@@ -231,10 +376,10 @@ export function useGamepad() {
     setCalibration(newCalibration);
   }, [activeGamepad, calibration]);
 
-  const calibrateRange = useCallback(() => {
+  const calibrateRange = useCallback((customScale) => {
     const newCalibration = {
       ...calibration,
-      rangeScale: {
+      rangeScale: customScale || {
         left: { x: 1.0, y: 1.0 },
         right: { x: 1.0, y: 1.0 }
       }
@@ -278,6 +423,10 @@ export function useGamepad() {
     calibrateCenter,
     calibrateRange,
     saveCalibrationPermanently,
-    resetCalibration
+    resetCalibration,
+    webHidStatus,
+    isWebHidSupported: isWebHidSupported(),
+    connectWebHid: requestSonyWebHid,
+    disconnectWebHid: disconnectSonyWebHid
   };
 }

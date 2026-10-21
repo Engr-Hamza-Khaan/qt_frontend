@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, DollarSign, TrendingUp, ShoppingBag, Wallet, RefreshCw, ArrowRight,
-  Calendar, Filter, X, RotateCcw
+  Calendar, Filter, X, RotateCcw, ArrowDownLeft, ArrowUpRight, ShieldAlert,
+  Gamepad2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { api } from '../../api/client';
@@ -12,6 +13,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import LowStockAlerts from '../dashboard/LowStockAlerts';
+import VendorStockModal from './VendorStockModal';
 import { formatCurrency, formatNumber, formatDate } from '../../utils/formatters';
 
 const REFRESH_INTERVAL_MS = 30000;
@@ -42,6 +44,8 @@ function VendorPortal() {
   const [preset, setPreset] = useState('30d');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockModalMode, setStockModalMode] = useState('in');
 
   const { data, loading, error, refetch } = useFetch(
     () => api.vendors.getPortalDashboard({ preset, startDate, endDate }),
@@ -121,24 +125,104 @@ function VendorPortal() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => refetch()}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStockModalMode('in');
+              setShowStockModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition"
+          >
+            <ArrowDownLeft className="w-4 h-4" />
+            + Stock In Game
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStockModalMode('out');
+              setShowStockModal(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition"
+          >
+            <ArrowUpRight className="w-4 h-4" />
+            Stock Out
+          </button>
+          <Link
+            to="/admin/vendor-used-consoles"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition"
+          >
+            <Gamepad2 className="w-4 h-4" />
+            Used Console Ads (30d)
+          </Link>
           <Link
             to="/admin/products"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700 dark:hover:bg-slate-600 transition"
           >
-            Manage Products
+            View All Games
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
+      </div>
+
+      {/* VENDOR FULFILLMENT & PAYMENT POLICY NOTICE */}
+      <div className="p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl flex items-start gap-3 shadow-sm">
+        <div className="p-2 bg-amber-500/10 dark:bg-amber-500/20 rounded-xl text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+          <ShieldAlert className="w-5 h-5" />
+        </div>
+        <div className="text-xs text-amber-900 dark:text-amber-200/90 leading-relaxed space-y-1">
+          <div className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5 text-sm">
+            Important Vendor Policy & Payment Terms
+          </div>
+          <p>
+            • <strong>Payment Settlement:</strong> Payment will be cleared after product is successfully received by the customer.
+          </p>
+          <p>
+            • <strong>Vendor Liability:</strong> If product has any problem or is not as described, <strong>all delivery charges will be paid by the vendor</strong>.
+          </p>
+          <p className="text-[11px] text-amber-700 dark:text-amber-400">
+            Product should meet all the given details (condition, platform, region, edition, packaging).
+          </p>
+        </div>
+      </div>
+
+      {/* 30-DAY USED CONSOLE SELLING BANNER FOR VENDORS */}
+      <div className="p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/30 dark:via-indigo-950/30 dark:to-blue-950/30 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-purple-500/10 dark:bg-purple-500/20 rounded-xl text-purple-600 dark:text-purple-400 shrink-0 mt-0.5">
+            <Gamepad2 className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Sell Used Consoles (30-Day Auto-Expiring Ads)
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                New Feature
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Post second-hand PlayStation, Xbox, and Nintendo Switch hardware directly to storefront buyers. Ads remain active for 30 days and automatically disable when expired or sold.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          to="/admin/vendor-used-consoles"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-500/20 transition shrink-0"
+        >
+          Manage Console Ads
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {error && (
@@ -399,6 +483,14 @@ function VendorPortal() {
           </Card>
         </div>
       </div>
+
+      {/* VENDOR STOCK IN / STOCK OUT MODAL */}
+      <VendorStockModal
+        open={showStockModal}
+        onClose={() => setShowStockModal(false)}
+        initialMode={stockModalMode}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

@@ -3,13 +3,14 @@ import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { getMediaUrl, getProductImage } from '../../store/utils';
 import { formatCurrency } from '../../utils/formatters';
-import { isStaffOrAbove } from '../../utils/roles';
+import { isStaffOrAbove, isVendor } from '../../utils/roles';
 import ModalOverlay from '../ui/ModalOverlay';
 import SearchAnalyticsModal from './SearchAnalyticsModal';
+import VendorStockModal from '../vendors/VendorStockModal';
 import { 
   Package, Plus, Search, Tag, Eye, Edit2, Copy, Trash2, 
   Layers, Layers2, Sparkles, Check, X, AlertCircle, Upload, Image as ImageIcon,
-  TrendingUp, KeyRound, Lightbulb, Link2
+  TrendingUp, KeyRound, Lightbulb, Link2, ArrowUpRight, ArrowDownRight, ArrowDownLeft, Wallet, ShieldAlert
 } from 'lucide-react';
 
 const GAME_GENRES = [
@@ -31,6 +32,7 @@ const GAME_PLATFORMS = ['PS5', 'PS4', 'XBOX', 'NINTENDO SWITCH'];
 function ProductList() {
   const { user } = useAuth();
   const canAssignSupplier = isStaffOrAbove(user?.role);
+  const isVendorUser = isVendor(user?.role);
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -42,12 +44,19 @@ function ProductList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedCondition, setSelectedCondition] = useState('');
+  const [onlyMyStock, setOnlyMyStock] = useState(false);
 
   // Modals state
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  
+  // Vendor Stock In/Out Modal State
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockModalProduct, setStockModalProduct] = useState(null);
+  const [stockModalVariation, setStockModalVariation] = useState(null);
+  const [stockModalMode, setStockModalMode] = useState('in');
   
   // Variation Manager Modal State
   const [showVariationModal, setShowVariationModal] = useState(false);
@@ -146,10 +155,22 @@ function ProductList() {
     fetchData();
   }, []);
 
+  const myStockedGamesCount = useMemo(() => {
+    return products.filter(p =>
+      (p.variations || []).some(v => (v.vendorStocks?.[0]?.quantity || 0) > 0)
+    ).length;
+  }, [products]);
+
   // Filtered Products - Multi-column comprehensive search across all table fields & keywords
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const trimmedSearch = searchTerm.trim().toLowerCase();
+
+      // Vendor My Stock filter
+      if (onlyMyStock) {
+        const hasVendorStock = (p.variations || []).some(v => (v.vendorStocks?.[0]?.quantity || 0) > 0);
+        if (!hasVendorStock) return false;
+      }
 
       // Dropdown filters
       const matchesCategory = selectedCategory ? String(p.categoryId) === String(selectedCategory) : true;
@@ -869,32 +890,65 @@ function ProductList() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <Package className="w-7 h-7 text-blue-500" />
-            Products & Catalog Management
+            {isVendorUser ? 'Catalog Games & Stock Management' : 'Products & Catalog Management'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Control items, create variations, upload images, and configure categories.
+            {isVendorUser 
+              ? 'Browse platform games, stock in inventory with custom selling price & receive payout upon customer delivery.'
+              : 'Control items, create variations, upload images, and configure categories.'}
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          <button 
-            type="button"
-            onClick={() => setShowAnalyticsModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-xl transition-all font-semibold text-xs sm:text-sm border border-purple-200 dark:border-purple-800/60"
-          >
-            <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-            <span>Search Analytics</span>
-          </button>
+        {isVendorUser ? (
+          <div className="flex items-center gap-2">
+            <button 
+              type="button"
+              onClick={() => {
+                setStockModalProduct(null);
+                setStockModalVariation(null);
+                setStockModalMode('out');
+                setShowStockModal(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-xl transition-all font-semibold text-xs sm:text-sm border border-rose-200 dark:border-rose-900/60 active:scale-[0.98]"
+            >
+              <ArrowDownRight className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <span>Stock Out</span>
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                setStockModalProduct(null);
+                setStockModalVariation(null);
+                setStockModalMode('in');
+                setShowStockModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-md shadow-emerald-500/20 active:scale-[0.98] transition-all"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+              <span>+ Stock In Game</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <button 
+              type="button"
+              onClick={() => setShowAnalyticsModal(true)}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-xl transition-all font-semibold text-xs sm:text-sm border border-purple-200 dark:border-purple-800/60"
+            >
+              <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span>Search Analytics</span>
+            </button>
 
-          <button 
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm active:scale-[0.98]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Product</span>
-          </button>
-        </div>
+            <button 
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="btn-brand flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Product</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Filter and search bar */}
@@ -923,6 +977,35 @@ function ProductList() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Vendor specific Quick Tabs */}
+          {isVendorUser && (
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setOnlyMyStock(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  !onlyMyStock
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                All Games ({products.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnlyMyStock(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  onlyMyStock
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>My Stocked ({myStockedGamesCount})</span>
+              </button>
+            </div>
+          )}
+
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -967,11 +1050,14 @@ function ProductList() {
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Product Info</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Condition</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
-                  {canAssignSupplier && (
+                  {canAssignSupplier && !isVendorUser && (
                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Supplier</th>
                   )}
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Platform</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">SKUs / Variations</th>
+                  {isVendorUser && (
+                    <th className="p-4 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">My Stock</th>
+                  )}
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -979,6 +1065,8 @@ function ProductList() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredProducts.map(p => {
                   const mediaUrl = getProductImage(p);
+                  const myProductStock = (p.variations || []).reduce((sum, v) => sum + (v.vendorStocks?.[0]?.quantity || 0), 0);
+                  const myStockedSKUs = (p.variations || []).filter(v => (v.vendorStocks?.[0]?.quantity || 0) > 0);
                   
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
@@ -1017,7 +1105,7 @@ function ProductList() {
                           {p.category?.name || 'Uncategorized'}
                         </span>
                       </td>
-                      {canAssignSupplier && (
+                      {canAssignSupplier && !isVendorUser && (
                         <td className="p-4">
                           <span className="text-sm text-slate-600 dark:text-slate-400">
                             {p.vendor?.companyName || 'Store (No supplier)'}
@@ -1038,6 +1126,25 @@ function ProductList() {
                           {p.variations?.length || 0} Variations
                         </button>
                       </td>
+                      {isVendorUser && (
+                        <td className="p-4">
+                          {myProductStock > 0 ? (
+                            <div className="space-y-0.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                <Check className="w-3 h-3" />
+                                {myProductStock} in stock
+                              </span>
+                              {myStockedSKUs[0]?.vendorStocks?.[0]?.vendorEarnings && (
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  Payout: {formatCurrency(myStockedSKUs[0].vendorStocks[0].vendorEarnings)}/ea
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-medium">0 units</span>
+                          )}
+                        </td>
+                      )}
                       <td className="p-4">
                         <span className={`text-xs font-semibold ${
                           p.status === 'Published' 
@@ -1048,29 +1155,64 @@ function ProductList() {
                         </span>
                       </td>
                       <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleOpenEditModal(p)}
-                            title="Edit Product"
-                            className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDuplicateProduct(p.id)}
-                            title="Duplicate Product"
-                            className="p-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(p.id)}
-                            title="Delete Product"
-                            className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {isVendorUser ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStockModalProduct(p);
+                                setStockModalVariation(p.variations?.[0] || null);
+                                setStockModalMode('in');
+                                setShowStockModal(true);
+                              }}
+                              title="Stock In This Game"
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-sm active:scale-95 transition-all"
+                            >
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                              <span>Stock In</span>
+                            </button>
+                            {myProductStock > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStockModalProduct(p);
+                                  setStockModalVariation(myStockedSKUs[0] || p.variations?.[0] || null);
+                                  setStockModalMode('out');
+                                  setShowStockModal(true);
+                                }}
+                                title="Stock Out This Game"
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-xs text-rose-700 dark:text-rose-300 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 active:scale-95 transition-all"
+                              >
+                                <ArrowDownRight className="w-3.5 h-3.5" />
+                                <span>Stock Out</span>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditModal(p)}
+                              title="Edit Product"
+                              className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDuplicateProduct(p.id)}
+                              title="Duplicate Product"
+                              className="p-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(p.id)}
+                              title="Delete Product"
+                              className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1994,10 +2136,10 @@ function ProductList() {
             <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20">
               <div>
                 <h3 className="font-bold text-lg text-slate-800 dark:text-white">
-                  Manage Variations & Media
+                  {isVendorUser ? 'Product Variations & Your Stock' : 'Manage Variations & Media'}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {selectedProductForVariations.title}
+                  {selectedProductForVariations.title} {isVendorUser && '— View game SKUs and manage your stock'}
                 </p>
               </div>
               <button 
@@ -2014,6 +2156,7 @@ function ProductList() {
             <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-h-[82vh] overflow-y-auto">
               
               {/* Left col: Variation Photo & Add/Edit Form (lg:col-span-5) */}
+              {!isVendorUser && (
               <div className="space-y-5 lg:col-span-5">
                 
                 {/* 1. VARIATION PHOTO & MEDIA SECTION */}
@@ -2585,15 +2728,16 @@ function ProductList() {
                   </div>
                 </form>
               </div>
+              )}
 
-              {/* Right col: Variations table list (lg:col-span-7) */}
-              <div className="lg:col-span-7 space-y-4">
+              {/* Right col: Variations table list */}
+              <div className={`${isVendorUser ? 'lg:col-span-12' : 'lg:col-span-7'} space-y-4`}>
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                    Active Variations ({selectedProductForVariations.variations?.length || 0})
+                    {isVendorUser ? `SKU Variations (${selectedProductForVariations.variations?.length || 0})` : `Active Variations (${selectedProductForVariations.variations?.length || 0})`}
                   </h4>
                   <span className="text-[11px] text-slate-400">
-                    Supports Color, Storage, Edition, Platform, Condition & Bundle
+                    {isVendorUser ? 'Stock In or Stock Out for your vendor inventory' : 'Supports Color, Storage, Edition, Platform, Condition & Bundle'}
                   </span>
                 </div>
                 
@@ -2610,8 +2754,8 @@ function ProductList() {
                             <th className="p-3 w-12 text-center">Photo</th>
                             <th className="p-3">SKU & Specs</th>
                             <th className="p-3">Variation Attributes</th>
-                            <th className="p-3">Price</th>
-                            <th className="p-3">Stock</th>
+                            <th className="p-3">{isVendorUser ? 'Catalog Price' : 'Price'}</th>
+                            <th className="p-3">{isVendorUser ? 'Store / My Stock' : 'Stock'}</th>
                             <th className="p-3 text-right">Actions</th>
                           </tr>
                         </thead>
@@ -2693,9 +2837,11 @@ function ProductList() {
                                 </td>
                                 <td className="p-3 font-semibold text-slate-800 dark:text-white whitespace-nowrap">
                                   {formatCurrency(v.price)}{' '}
-                                  <span className="text-[10px] text-slate-400 font-normal">
-                                    ({formatCurrency(v.costPrice || 0)} cost)
-                                  </span>
+                                  {!isVendorUser && (
+                                    <span className="text-[10px] text-slate-400 font-normal">
+                                      ({formatCurrency(v.costPrice || 0)} cost)
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="p-3 whitespace-nowrap">
                                   <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
@@ -2703,28 +2849,79 @@ function ProductList() {
                                       ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' 
                                       : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                                   }`}>
-                                    {v.stockQuantity} in stock
+                                    {v.stockQuantity} in store
                                   </span>
+                                  {isVendorUser && (
+                                    <div className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                                      My Stock: {v.vendorStocks?.[0]?.quantity || 0}
+                                      {v.vendorStocks?.[0]?.sellingPrice > 0 && (
+                                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                          Sell Price: {formatCurrency(v.vendorStocks[0].sellingPrice)}
+                                          <span className="text-emerald-600 dark:text-emerald-400 font-bold ml-1">
+                                            (Payout: {formatCurrency(v.vendorStocks[0].vendorEarnings || (v.vendorStocks[0].sellingPrice * 0.9))})
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="p-3 text-right whitespace-nowrap">
-                                  <div className="inline-flex items-center gap-1 justify-end">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleStartEditVariation(v)}
-                                      className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                                      title="Edit variation"
-                                    >
-                                      <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteVariation(v.id)}
-                                      className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                      title="Delete variation"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
+                                  {isVendorUser ? (
+                                    <div className="inline-flex items-center gap-1.5 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setStockModalProduct(selectedProductForVariations);
+                                          setStockModalVariation(v);
+                                          setStockModalMode('in');
+                                          setShowStockModal(true);
+                                        }}
+                                        className="px-2.5 py-1 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm flex items-center gap-1"
+                                        title="Stock in your inventory for this SKU"
+                                      >
+                                        <ArrowDownLeft className="w-3.5 h-3.5" />
+                                        Stock In
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setStockModalProduct(selectedProductForVariations);
+                                          setStockModalVariation(v);
+                                          setStockModalMode('out');
+                                          setShowStockModal(true);
+                                        }}
+                                        disabled={!(v.vendorStocks?.[0]?.quantity > 0)}
+                                        className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition shadow-sm flex items-center gap-1 ${
+                                          v.vendorStocks?.[0]?.quantity > 0
+                                            ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50'
+                                        }`}
+                                        title={v.vendorStocks?.[0]?.quantity > 0 ? "Stock out from your inventory" : "You have no stock in this SKU"}
+                                      >
+                                        <ArrowUpRight className="w-3.5 h-3.5" />
+                                        Stock Out
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="inline-flex items-center gap-1 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStartEditVariation(v)}
+                                        className="text-blue-500 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                                        title="Edit variation"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteVariation(v.id)}
+                                        className="text-red-500 hover:text-red-700 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                        title="Delete variation"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -2757,6 +2954,29 @@ function ProductList() {
       <SearchAnalyticsModal
         open={showAnalyticsModal}
         onClose={() => setShowAnalyticsModal(false)}
+      />
+
+      {/* MODAL 4: VENDOR STOCK IN / STOCK OUT */}
+      <VendorStockModal
+        open={showStockModal}
+        onClose={() => setShowStockModal(false)}
+        initialProduct={stockModalProduct}
+        initialVariation={stockModalVariation}
+        initialMode={stockModalMode}
+        products={products}
+        onSuccess={async () => {
+          await fetchData();
+          if (selectedProductForVariations) {
+            try {
+              const res = await api.products.getById(selectedProductForVariations.id);
+              if (res.success && res.data) {
+                setSelectedProductForVariations(res.data);
+              }
+            } catch (err) {
+              console.error('Failed to refresh variation modal data:', err);
+            }
+          }
+        }}
       />
 
     </div>
