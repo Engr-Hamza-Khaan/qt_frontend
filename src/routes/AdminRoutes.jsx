@@ -17,6 +17,7 @@ const ServiceTickets = lazy(() => import('../components/services/ServiceTickets'
 const FinancialReport = lazy(() => import('../components/analytics/FinancialReport'));
 const VendorList = lazy(() => import('../components/vendors/VendorList'));
 const VendorPortal = lazy(() => import('../components/vendors/VendorPortal'));
+const VendorUsedConsoleAds = lazy(() => import('../components/vendors/VendorUsedConsoleAds'));
 const LandingPageSettings = lazy(() => import('../components/settings/LandingPageSettings'));
 const AnnouncementBarSettings = lazy(() => import('../components/settings/AnnouncementBarSettings'));
 const TermsSettings = lazy(() => import('../components/settings/TermsSettings'));
@@ -65,6 +66,7 @@ export default function AdminRoutes() {
 
         <Route path="dashboard" element={<ProtectedRoute roles={staffRoles}><LazyPage><Dashboard /></LazyPage></ProtectedRoute>} />
         <Route path="vendor-portal" element={<ProtectedRoute roles={vendorRoles}><LazyPage><VendorPortal /></LazyPage></ProtectedRoute>} />
+        <Route path="vendor-used-consoles" element={<ProtectedRoute roles={[...staffRoles, ROLES.VENDOR]}><LazyPage><VendorUsedConsoleAds /></LazyPage></ProtectedRoute>} />
         <Route path="products" element={<ProtectedRoute roles={productRoles}><LazyPage><ProductList /></LazyPage></ProtectedRoute>} />
         <Route path="orders" element={<ProtectedRoute roles={orderRoles}><LazyPage><OrderList /></LazyPage></ProtectedRoute>} />
         <Route path="invoices" element={<ProtectedRoute roles={staffRoles}><LazyPage><InvoiceList /></LazyPage></ProtectedRoute>} />

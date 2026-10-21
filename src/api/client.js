@@ -199,6 +199,22 @@ export const api = {
     stockOut: async (data) =>
       request('/vendors/stock/out', { method: 'POST', body: data }),
     getMyStock: async () => request('/vendors/stock/my-stock'),
+    getUsedConsoles: async (params = {}) => {
+      const query = new URLSearchParams(params).toString();
+      return request(`/vendors/used-consoles${query ? `?${query}` : ''}`);
+    },
+    createUsedConsoleAd: async (data) =>
+      request('/vendors/used-consoles', { method: 'POST', body: data }),
+    updateUsedConsoleAd: async (id, data) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: data }),
+    deleteUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'DELETE' }),
+    extendUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: { action: 'extend_30_days' } }),
+    toggleUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: { action: 'toggle_active' } }),
+    markSoldUsedConsoleAd: async (id) =>
+      request(`/vendors/used-consoles/${id}`, { method: 'PUT', body: { action: 'mark_sold' } }),
   },
 
   discounts: {

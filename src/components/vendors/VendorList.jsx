@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   Truck, Search, Eye, DollarSign, RefreshCw, X, AlertCircle,
-  Plus, Edit2, Trash2,
+  Plus, Edit2, Trash2, KeyRound, Copy, Check, MessageCircle,
+  Mail, ExternalLink, Share2, EyeOff, Lock, CheckCircle2, ShieldCheck
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
@@ -41,6 +42,12 @@ function VendorList() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // Access Sharing & Password Generation States
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedAccess, setCopiedAccess] = useState(false);
+  const [createdVendorAccess, setCreatedVendorAccess] = useState(null);
+  const [shareVendorModal, setShareVendorModal] = useState(null);
 
   const fetchVendors = async () => {
     setLoading(true);
@@ -87,9 +94,49 @@ function VendorList() {
     }
   };
 
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setForm((prev) => ({ ...prev, password: pwd }));
+    setShowPassword(true);
+  };
+
+  const getShareAccessMessage = (vendorData, rawPassword) => {
+    const portalUrl = `${window.location.origin}/admin/login`;
+    const company = vendorData?.companyName || vendorData?.name || 'Supplier';
+    const email = vendorData?.email || '';
+    const pwd = rawPassword || (vendorData?.password ? vendorData.password : (form.password ? form.password : '(Keep your current password)'));
+
+    return `Hello ${company},\n\nYour Quickturn Supplier Portal account is ready.\n\n🌐 Portal Link: ${portalUrl}\n📧 Login Email: ${email}\n🔑 Password: ${pwd}\n\nPlease sign in to view your supplier dashboard, inventory movements, earnings, and manage your 30-day used console ads.`;
+  };
+
+  const handleCopyAccess = (vendorData, rawPassword) => {
+    const text = getShareAccessMessage(vendorData, rawPassword);
+    navigator.clipboard.writeText(text);
+    setCopiedAccess(true);
+    setTimeout(() => setCopiedAccess(false), 2500);
+  };
+
+  const getWhatsAppShareLink = (vendorData, rawPassword) => {
+    const phone = (vendorData?.phoneNumber || vendorData?.phone || '').replace(/[^0-9]/g, '');
+    const text = encodeURIComponent(getShareAccessMessage(vendorData, rawPassword));
+    return phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+  };
+
+  const getEmailShareLink = (vendorData, rawPassword) => {
+    const email = vendorData?.email || '';
+    const subject = encodeURIComponent('Quickturn Supplier Portal - Login Access Details');
+    const body = encodeURIComponent(getShareAccessMessage(vendorData, rawPassword));
+    return `mailto:${email}?subject=${subject}&body=${body}`;
+  };
+
   const openCreateModal = () => {
     setEditingVendor(null);
     setForm(EMPTY_FORM);
+    setShowPassword(false);
     setShowFormModal(true);
   };
 
@@ -106,6 +153,7 @@ function VendorList() {
       status: vendor.status || 'Active',
       isActive: vendor.user?.isActive ?? true,
     });
+    setShowPassword(false);
     setShowFormModal(true);
   };
 
@@ -128,8 +176,10 @@ function VendorList() {
           address: form.address,
           status: form.status,
           isActive: form.isActive,
+          ...(form.password ? { password: form.password } : {})
         };
         await api.vendors.update(editingVendor.id, payload);
+        setShowFormModal(false);
       } else {
         if (!form.password) {
           alert('Password is required for new suppliers');
@@ -145,8 +195,18 @@ function VendorList() {
           address: form.address,
           status: form.status,
         });
+
+        // Prompt admin with Access Sharing card immediately after creating
+        setCreatedVendorAccess({
+          companyName: form.companyName,
+          name: form.name,
+          email: form.email,
+          phoneNumber: form.phoneNumber,
+          phone: form.phoneNumber,
+          password: form.password,
+        });
+        setShowFormModal(false);
       }
-      setShowFormModal(false);
       fetchVendors();
     } catch (err) {
       alert(err.message || 'Failed to save supplier');
@@ -278,6 +338,14 @@ function VendorList() {
                           <>
                             <button
                               type="button"
+                              onClick={() => setShareVendorModal(vendor)}
+                              title="Share portal access"
+                              className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 hover:bg-emerald-100 transition"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => openEditModal(vendor)}
                               title="Edit supplier"
                               className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 text-amber-600 hover:bg-amber-100 transition"
@@ -371,20 +439,41 @@ function VendorList() {
                   />
                 </div>
 
-                {!editingVendor ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Password *</label>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-500 uppercase">
+                      Password {!editingVendor && '*'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={generateRandomPassword}
+                      className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      Generate Password
+                    </button>
+                  </div>
+                  <div className="relative">
                     <input
-                      required
-                      type="password"
+                      required={!editingVendor}
+                      type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
                       value={form.password}
                       onChange={(e) => handleFormChange('password', e.target.value)}
-                      placeholder="Min. 8 characters"
-                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                      placeholder={editingVendor ? 'Leave blank to keep current' : 'Min. 8 characters'}
+                      className="w-full pl-4 pr-11 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                ) : (
+                </div>
+
+                {editingVendor ? (
                   <div className="flex items-end">
                     <label className="flex items-center gap-2 cursor-pointer pb-2.5">
                       <input
@@ -396,18 +485,31 @@ function VendorList() {
                       <span className="text-sm text-slate-600 dark:text-slate-400">Account active</span>
                     </label>
                   </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Phone</label>
+                    <input
+                      autoComplete="tel"
+                      value={form.phoneNumber}
+                      onChange={(e) => handleFormChange('phoneNumber', e.target.value)}
+                      placeholder="+92 300 1234567"
+                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                    />
+                  </div>
                 )}
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Phone</label>
-                  <input
-                    autoComplete="tel"
-                    value={form.phoneNumber}
-                    onChange={(e) => handleFormChange('phoneNumber', e.target.value)}
-                    placeholder="+92 300 1234567"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-                  />
-                </div>
+                {editingVendor && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Phone</label>
+                    <input
+                      autoComplete="tel"
+                      value={form.phoneNumber}
+                      onChange={(e) => handleFormChange('phoneNumber', e.target.value)}
+                      placeholder="+92 300 1234567"
+                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Status</label>
@@ -432,6 +534,89 @@ function VendorList() {
                     placeholder="Business address"
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
                   />
+                </div>
+
+                {/* Direct Share Options inside Modal */}
+                <div className="sm:col-span-2 p-4 rounded-2xl bg-gradient-to-br from-blue-50/90 to-indigo-50/70 dark:from-slate-800/90 dark:to-indigo-950/30 border border-blue-200/80 dark:border-slate-700 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-blue-600 text-white shadow-sm">
+                        <Share2 className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
+                          Share Portal Access
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Directly send login credentials and portal link to this vendor
+                        </p>
+                      </div>
+                    </div>
+                    {form.password && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        Password Ready
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Portal URL</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300 truncate block text-[11px]" title={`${window.location.origin}/admin/login`}>
+                        {window.location.origin}/admin/login
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Email</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300 truncate block text-[11px]">
+                        {form.email || '—'}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Password</span>
+                      <span className="font-mono truncate block text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                        {form.password || (editingVendor ? '(Keep existing)' : 'Generate above')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAccess(form, form.password)}
+                      className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-sm"
+                    >
+                      {copiedAccess ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="text-emerald-600 font-bold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Copy Access</span>
+                        </>
+                      )}
+                    </button>
+
+                    <a
+                      href={getWhatsAppShareLink(form, form.password)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition shadow-sm"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+
+                    <a
+                      href={getEmailShareLink(form, form.password)}
+                      className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Email</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -568,6 +753,230 @@ function VendorList() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+      </ModalOverlay>
+
+      {/* Newly Created Vendor - Access Credentials Share Lightbox */}
+      <ModalOverlay open={!!createdVendorAccess}>
+        {createdVendorAccess && (
+          <div className="flex flex-col w-[min(calc(100vw-2rem),34rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 text-center border-b border-slate-100 dark:border-slate-800 bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/20">
+              <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">
+                Supplier Created Successfully!
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Account login credentials have been generated for <strong className="text-slate-700 dark:text-slate-300">{createdVendorAccess.companyName}</strong>. Share portal access with them now.
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-2.5 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-700">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 uppercase font-semibold">Portal URL</span>
+                  <a
+                    href={`${window.location.origin}/admin/login`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    {window.location.origin}/admin/login
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex items-center justify-between text-xs border-t border-slate-200/60 dark:border-slate-700/60 pt-2">
+                  <span className="text-slate-400 uppercase font-semibold">Login Email</span>
+                  <span className="font-mono font-medium text-slate-700 dark:text-slate-300">
+                    {createdVendorAccess.email}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs border-t border-slate-200/60 dark:border-slate-700/60 pt-2">
+                  <span className="text-slate-400 uppercase font-semibold">Password</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-800">
+                    {createdVendorAccess.password}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleCopyAccess(createdVendorAccess, createdVendorAccess.password)}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white transition shadow-sm"
+                >
+                  {copiedAccess ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span className="text-emerald-600 font-bold">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                      <span>Copy Details</span>
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={getWhatsAppShareLink(createdVendorAccess, createdVendorAccess.password)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition shadow-sm"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp</span>
+                </a>
+
+                <a
+                  href={getEmailShareLink(createdVendorAccess, createdVendorAccess.password)}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Email</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setCreatedVendorAccess(null)}
+                className="btn-brand px-6 py-2 rounded-xl text-xs font-semibold"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+      </ModalOverlay>
+
+      {/* Share Vendor Access Lightbox */}
+      <ModalOverlay open={!!shareVendorModal}>
+        {shareVendorModal && (
+          <div className="flex flex-col w-[min(calc(100vw-2rem),34rem)] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/80 dark:bg-slate-950/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Share2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                    Share Supplier Portal Access
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {shareVendorModal.companyName} ({shareVendorModal.email})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareVendorModal(null)}
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-2.5 bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-700">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 uppercase font-semibold">Portal URL</span>
+                  <a
+                    href={`${window.location.origin}/admin/login`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  >
+                    {window.location.origin}/admin/login
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <div className="flex items-center justify-between text-xs border-t border-slate-200/60 dark:border-slate-700/60 pt-2">
+                  <span className="text-slate-400 uppercase font-semibold">Vendor Email</span>
+                  <span className="font-mono font-medium text-slate-700 dark:text-slate-300">
+                    {shareVendorModal.email}
+                  </span>
+                </div>
+                {shareVendorModal.phone && (
+                  <div className="flex items-center justify-between text-xs border-t border-slate-200/60 dark:border-slate-700/60 pt-2">
+                    <span className="text-slate-400 uppercase font-semibold">Phone</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">
+                      {shareVendorModal.phone}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                <p>
+                  Passwords are encrypted for security. If the supplier forgot their password, you can reset it by editing this supplier and entering a new password.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleCopyAccess(shareVendorModal, '')}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-white transition shadow-sm"
+                >
+                  {copiedAccess ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span className="text-emerald-600 font-bold">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                      <span>Copy Details</span>
+                    </>
+                  )}
+                </button>
+
+                <a
+                  href={getWhatsAppShareLink(shareVendorModal, '')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition shadow-sm"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp</span>
+                </a>
+
+                <a
+                  href={getEmailShareLink(shareVendorModal, '')}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Email</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = shareVendorModal;
+                  setShareVendorModal(null);
+                  openEditModal(target);
+                }}
+                className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Reset Password / Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareVendorModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800"
+              >
+                Close
+              </button>
             </div>
           </div>
         )}

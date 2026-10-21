@@ -929,6 +929,11 @@ function SellPage() {
                               🎨 {ad.color}
                             </span>
                           )}
+                          {ad.sellerType === 'Vendor' && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold flex items-center gap-1">
+                              🛡️ Supplier: {ad.vendorCompany || 'Verified'}
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -1117,7 +1122,14 @@ function SellPage() {
             <div className="p-4 bg-gradient-to-r from-neon-purple/20 via-blue-600/10 to-transparent border border-neon-purple/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">Listed By</span>
-                <span className="text-sm font-bold text-white block">{selectedAdForModal.customerName}</span>
+                <span className="text-sm font-bold text-white flex items-center gap-1.5">
+                  {selectedAdForModal.vendorCompany || selectedAdForModal.customerName}
+                  {selectedAdForModal.sellerType === 'Vendor' && (
+                    <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] border border-purple-500/40 font-bold">
+                      🛡️ Verified Supplier
+                    </span>
+                  )}
+                </span>
                 <span className="text-xs text-slate-300 flex items-center gap-1 mt-0.5">
                   <MapPin className="w-3 h-3 text-slate-400" /> {selectedAdForModal.city || 'Pakistan'}
                 </span>

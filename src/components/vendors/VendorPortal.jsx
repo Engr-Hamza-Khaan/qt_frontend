@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Package, DollarSign, TrendingUp, ShoppingBag, Wallet, RefreshCw, ArrowRight,
-  Calendar, Filter, X, RotateCcw, ArrowDownLeft, ArrowUpRight, ShieldAlert
+  Calendar, Filter, X, RotateCcw, ArrowDownLeft, ArrowUpRight, ShieldAlert,
+  Gamepad2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts';
 import { api } from '../../api/client';
@@ -157,6 +158,13 @@ function VendorPortal() {
             Stock Out
           </button>
           <Link
+            to="/admin/vendor-used-consoles"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition"
+          >
+            <Gamepad2 className="w-4 h-4" />
+            Used Console Ads (30d)
+          </Link>
+          <Link
             to="/admin/products"
             className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-xl bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700 dark:hover:bg-slate-600 transition"
           >
@@ -185,6 +193,36 @@ function VendorPortal() {
             Product should meet all the given details (condition, platform, region, edition, packaging).
           </p>
         </div>
+      </div>
+
+      {/* 30-DAY USED CONSOLE SELLING BANNER FOR VENDORS */}
+      <div className="p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/30 dark:via-indigo-950/30 dark:to-blue-950/30 border border-purple-200/80 dark:border-purple-800/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-purple-500/10 dark:bg-purple-500/20 rounded-xl text-purple-600 dark:text-purple-400 shrink-0 mt-0.5">
+            <Gamepad2 className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Sell Used Consoles (30-Day Auto-Expiring Ads)
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">
+                New Feature
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Post second-hand PlayStation, Xbox, and Nintendo Switch hardware directly to storefront buyers. Ads remain active for 30 days and automatically disable when expired or sold.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          to="/admin/vendor-used-consoles"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-500/20 transition shrink-0"
+        >
+          Manage Console Ads
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {error && (
