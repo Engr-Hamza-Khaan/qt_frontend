@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { isBackendDownStatus, reportBackendDown } from '../utils/backendStatus';
+
+const API_BASE_URL =import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
@@ -18,7 +20,14 @@ async function request(endpoint, options = {}) {
     config.body = JSON.stringify(config.body);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  } catch (err) {
+    reportBackendDown();
+    throw err;
+  }
+  if (isBackendDownStatus(response.status)) reportBackendDown();
 
   if (response.status === 401) {
     localStorage.removeItem('token');

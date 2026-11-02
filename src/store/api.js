@@ -1,4 +1,5 @@
 import { API_URL } from './utils';
+import { isBackendDownStatus, reportBackendDown } from '../utils/backendStatus';
 
 async function storeRequest(endpoint, options = {}) {
   const headers = { ...options.headers };
@@ -11,7 +12,14 @@ async function storeRequest(endpoint, options = {}) {
     config.body = JSON.stringify(config.body);
   }
 
-  const res = await fetch(`${API_URL}${endpoint}`, config);
+  let res;
+  try {
+    res = await fetch(`${API_URL}${endpoint}`, config);
+  } catch (err) {
+    reportBackendDown();
+    throw err;
+  }
+  if (isBackendDownStatus(res.status)) reportBackendDown();
   let data;
   const contentType = res.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
