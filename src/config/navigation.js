@@ -34,6 +34,7 @@ export const PAGE_TITLES = {
   'landing-page': { title: 'Landing Page Customizer', subtitle: 'Customize landing page text, images, banners, and section order' },
   'announcement-bar': { title: 'Announcement Bar', subtitle: 'Manage store top announcement, message & active status' },
   'website-popup': { title: 'Website Popup', subtitle: 'Configure popup appearance, timing, duration & visitor interactions' },
+  'store-navigation': { title: 'Store Menu', subtitle: 'Add, remove, enable or disable storefront header menu categories' },
   'terms-and-conditions': { title: 'Terms & Conditions', subtitle: 'Manage store terms of service, policies & modal content' },
 };
 
@@ -91,6 +92,13 @@ const ALL_NAV_ITEMS = [
     path: '/admin/landing-page',
     icon: LayoutTemplate,
     label: 'Landing Page',
+    roles: (role) => isStaffOrAbove(role),
+  },
+  {
+    id: 'store-navigation',
+    path: '/admin/store-navigation',
+    icon: Layers,
+    label: 'Store Menu',
     roles: (role) => isStaffOrAbove(role),
   },
   {

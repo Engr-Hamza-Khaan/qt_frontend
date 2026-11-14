@@ -7,6 +7,8 @@ import {
   RefreshCw, CheckCircle2, Flame, Layers
 } from 'lucide-react';
 import { storeApi } from '../api';
+import { useAuth } from '../../context/AuthContext';
+import { isVendor } from '../../utils/roles';
 import { getMediaUrl } from '../utils';
 import { formatCurrency } from '../../utils/formatters';
 import TermsAgreement from '../components/TermsAgreement';
@@ -45,7 +47,10 @@ const EDITION_OPTIONS = [
 ];
 
 function SellPage() {
-  const [activeTab, setActiveTab] = useState('post-ad'); // 'post-ad', 'browse-ads', 'trade-in'
+  // Only suppliers (vendors) may post used console ads; customers get trade-in + browse.
+  const { user } = useAuth();
+  const canPostAds = isVendor(user?.role);
+  const [activeTab, setActiveTab] = useState(canPostAds ? 'post-ad' : 'trade-in'); // 'post-ad', 'browse-ads', 'trade-in'
 
   // Used Console Ad Form State - Matches Console Category Fields
   const [form, setForm] = useState({
@@ -308,6 +313,7 @@ function SellPage() {
 
       {/* Main Tabs Navigation */}
       <div className="flex items-center justify-center gap-2 mb-8 border-b border-white/10 pb-4">
+        {canPostAds && (
         <button
           type="button"
           onClick={() => setActiveTab('post-ad')}
@@ -320,6 +326,7 @@ function SellPage() {
           <Sparkles className="w-4 h-4" />
           Post Used Console Ad (30 Days)
         </button>
+        )}
 
         <button
           type="button"
@@ -349,7 +356,7 @@ function SellPage() {
       </div>
 
       {/* TAB 1: POST USED CONSOLE AD (WITH ALL CONSOLE CATEGORY FIELDS) */}
-      {activeTab === 'post-ad' && (
+      {activeTab === 'post-ad' && canPostAds && (
         <div className="max-w-3xl mx-auto">
           
           {/* 30-Day Notice Banner */}
@@ -837,15 +844,8 @@ function SellPage() {
               <Gamepad2 className="w-12 h-12 text-slate-500 mx-auto" />
               <h3 className="text-lg font-bold text-white">No Used Console Ads Currently Active</h3>
               <p className="text-xs text-slate-400">
-                Be the first gamer to post an ad for your used console! Ads stay active for 30 days.
+                Check back soon for verified pre-owned consoles from our suppliers.
               </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab('post-ad')}
-                className="store-btn-primary px-6 py-2.5 text-xs font-bold"
-              >
-                Post Used Console Ad Now
-              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -283,6 +283,11 @@
   }
 
   .hero-hollow-stroke {
+    /* Static font (no overlapping contours) so the outline renders cleanly */
+    font-family: 'Poppins', 'Inter', sans-serif;
+    font-weight: 800;
+    paint-order: stroke fill;
+    -webkit-text-stroke-linejoin: round;
     color: transparent;
     -webkit-text-stroke: 2px rgba(255, 255, 255, 0.95);
     text-stroke: 2px rgba(255, 255, 255, 0.95);

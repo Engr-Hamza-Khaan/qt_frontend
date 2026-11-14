@@ -8,25 +8,32 @@ import { storeApi } from '../api';
 import TermsAgreement from '../components/TermsAgreement';
 
 const POPULAR_DEVICES = [
-  'PS5 Disc Edition',
-  'PS5 Slim / Digital',
-  'PS4 Pro / Slim',
-  'Xbox Series X',
+  'PS4 Fat',
+  'PS4 Slim',
+  'PS4 Pro',
+  'PS5 Fat',
+  'PS5 Slim',
+  'PS5 Pro',
   'Xbox Series S',
+  'Xbox Series X',
   'Nintendo Switch OLED',
-  'DualSense Controller',
-  'Xbox Elite Series 2',
+  'Nintendo Switch 2',
+  'PS4 DualShock Controller',
+  'PS5 DualSense Controller',
+  'Xbox Controller',
 ];
 
 const ISSUE_CATEGORIES = [
-  { value: 'HDMI Port Replacement', label: 'HDMI Port Repair / Broken Pins' },
-  { value: 'Stick Drift / Hall-Effect', label: 'Stick Drift (Hall-Effect Upgrade)' },
-  { value: 'No Power / Overheating', label: 'No Power / Won\'t Turn On / Overheating' },
-  { value: 'Disc Drive Error', label: 'Disc Drive Not Reading / Jammed' },
-  { value: 'Button / Trigger Malfunction', label: 'Button / Bumper / Trigger Issue' },
-  { value: 'Liquid / Water Damage', label: 'Liquid / Water Damage Diagnostic' },
-  { value: 'Software / Boot Loop', label: 'Firmware / Boot Loop / Brick' },
-  { value: 'General Diagnostic / Other', label: 'Other Hardware Issue / Diagnostic' },
+  { value: 'HDMI Port', label: 'HDMI Port' },
+  { value: 'Stick Drift', label: 'Stick Drift' },
+  { value: 'No Power', label: 'No Power' },
+  { value: 'Blue Light of Death', label: 'Blue Light of Death' },
+  { value: '3 Beeps', label: '3 Beeps' },
+  { value: 'Disc Drive', label: 'Disc Drive' },
+  { value: 'Buttons / Trigger Issue', label: 'Buttons / Trigger Issue' },
+  { value: 'Liquid / Water Damage', label: 'Liquid / Water Damage' },
+  { value: 'Firmware / Hard Drive / Safe Mode', label: 'Firmware / Hard Drive / Safe Mode' },
+  { value: 'Other Diagnose', label: 'Other Diagnose' },
 ];
 
 function RepairPage() {
@@ -37,7 +44,7 @@ function RepairPage() {
     preferredContact: 'Email',
     deviceType: 'Console',
     deviceModel: '',
-    issueType: 'HDMI Port Replacement',
+    issueType: 'HDMI Port',
     serialNumber: '',
     accessoriesIncluded: 'Console / Device only',
     priority: 'Normal',
@@ -197,7 +204,7 @@ function RepairPage() {
                 preferredContact: 'Email',
                 deviceType: 'Console',
                 deviceModel: '',
-                issueType: 'HDMI Port Replacement',
+                issueType: 'HDMI Port',
                 serialNumber: '',
                 accessoriesIncluded: 'Console / Device only',
                 priority: 'Normal',
@@ -252,7 +259,7 @@ function RepairPage() {
               <input
                 required
                 className="store-input w-full"
-                placeholder="e.g. Alex Morgan"
+                placeholder="Full Name"
                 value={form.customerName}
                 onChange={(e) => setForm({ ...form, customerName: e.target.value })}
               />
@@ -266,7 +273,7 @@ function RepairPage() {
                 required
                 type="email"
                 className="store-input w-full"
-                placeholder="alex@example.com"
+                placeholder="Email Address"
                 value={form.customerEmail}
                 onChange={(e) => setForm({ ...form, customerEmail: e.target.value })}
               />
@@ -280,7 +287,7 @@ function RepairPage() {
               </label>
               <input
                 className="store-input w-full"
-                placeholder="+1 (555) 000-0000"
+                placeholder="Phone / WhatsApp Number"
                 value={form.customerPhone}
                 onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
               />
@@ -320,11 +327,9 @@ function RepairPage() {
                 value={form.deviceType}
                 onChange={(e) => setForm({ ...form, deviceType: e.target.value })}
               >
-                <option value="Console">Home Console (PS5, Xbox, Switch dock)</option>
-                <option value="Controller">Controller (DualSense, Elite, Scuf)</option>
-                <option value="Handheld">Handheld (Switch Lite, Steam Deck, ROG)</option>
-                <option value="Accessory">Headset / VR / Accessory</option>
-                <option value="Retro">Retro Console / Vintage Gear</option>
+                <option value="Console">Console (PS5, Xbox, Nintendo)</option>
+                <option value="Controller">Controller (DualSense, DualShock, Xbox)</option>
+                <option value="Handheld">Handheld (Switch OLED, Switch 2)</option>
               </select>
             </div>
 

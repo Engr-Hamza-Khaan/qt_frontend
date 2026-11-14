@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import BrandLogo from '../../components/ui/BrandLogo';
-import { STORE_NAV } from '../config/navigation';
+import { STORE_NAV as DEFAULT_STORE_NAV, applyNavigationOverrides } from '../config/navigation';
+import { storeApi } from '../api';
 import SearchBar from '../components/SearchBar';
 import qtLogo from '../../assets/QT Logo.png';
 
@@ -367,6 +368,17 @@ function StoreHeader({ embedded = false }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
+  const [storeNav, setStoreNav] = useState(DEFAULT_STORE_NAV);
+
+  useEffect(() => {
+    let cancelled = false;
+    storeApi.getNavigation()
+      .then((res) => {
+        if (!cancelled && res?.success) setStoreNav(applyNavigationOverrides(DEFAULT_STORE_NAV, res.data));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -408,7 +420,7 @@ function StoreHeader({ embedded = false }) {
             <div className="hidden lg:flex flex-1 justify-center min-w-0 px-2">
               <nav className="store-navbar w-fit px-3 py-1.5">
                 <div className="store-nav-items">
-                  {STORE_NAV.map((item) => (
+                  {storeNav.map((item) => (
                     <DesktopNavItem
                       key={item.id}
                       item={item}
@@ -499,7 +511,7 @@ function StoreHeader({ embedded = false }) {
               <SearchBar onCloseMobile={closeMenus} />
             </div>
 
-            {STORE_NAV.map((item) => (
+            {storeNav.map((item) => (
               <MobileNavSection
                 key={item.id}
                 item={item}

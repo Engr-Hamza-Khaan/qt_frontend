@@ -11,6 +11,7 @@ export const CONSOLE_PLATFORMS = [
   { label: 'Xbox', to: '/shop?categorySlug=consoles&search=xbox' },
   { label: 'Nintendo', to: '/shop?categorySlug=consoles&search=nintendo' },
   { label: 'VR Consoles', to: '/shop?categorySlug=consoles&search=vr' },
+  { label: 'Used Consoles', to: '/shop?categorySlug=consoles&used=true', autoMerge: true },
 ];
 
 export const GAMES_DROPDOWN = [
@@ -161,3 +162,42 @@ export const STORE_NAV = [
       REPAIR_SELL_DROPDOWN.some((sub) => loc.pathname === sub.to),
   },
 ];
+
+/**
+ * Links flagged `autoMerge` that were shipped after the admin last saved the menu are appended to the
+ * saved dropdown so they show up (admin can then hide/unhide them like any other link).
+ */
+export function mergeNewDefaultLinks(defaultLinks = [], savedLinks = []) {
+  const known = new Set(savedLinks.map((l) => l.to));
+  const extra = defaultLinks.filter((d) => d.autoMerge && !known.has(d.to));
+  return [...savedLinks, ...extra.map(({ label, to }) => ({ label, to, enabled: true, children: [] }))];
+}
+
+/**
+ * Applies admin-saved menu settings ({ items: [{ id, enabled, dropdown: [{ label, to, enabled, children }] }] })
+ * on top of STORE_NAV. Items/links the admin disabled or deleted are dropped.
+ */
+export function applyNavigationOverrides(nav, saved) {
+  if (!saved || !Array.isArray(saved.items)) return nav;
+
+  const cleanLinks = (links = []) =>
+    links
+      .filter((l) => l && l.enabled !== false && l.label)
+      .map(({ label, to, children }) => {
+        const kids = cleanLinks(children);
+        return kids.length > 0
+          ? { label, to, hasSubmenu: true, children: kids }
+          : { label, to };
+      });
+
+  return nav
+    .map((item) => {
+      const override = saved.items.find((o) => o.id === item.id);
+      if (!override) return item;
+      if (override.enabled === false) return null;
+      if (!Array.isArray(override.dropdown)) return item;
+      const dropdown = cleanLinks(mergeNewDefaultLinks(item.dropdown, override.dropdown));
+      return { ...item, dropdown: dropdown.length > 0 ? dropdown : undefined };
+    })
+    .filter(Boolean);
+}

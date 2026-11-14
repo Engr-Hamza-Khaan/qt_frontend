@@ -81,4 +81,5 @@ export const storeApi = {
   submitPopupLead: (data) =>
     storeRequest('/settings/popup/lead', { method: 'POST', body: data }),
   getLandingPage: () => storeRequest('/settings/landing-page'),
+  getNavigation: () => storeRequest('/settings/navigation'),
 };

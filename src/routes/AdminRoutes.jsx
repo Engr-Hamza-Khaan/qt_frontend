@@ -19,6 +19,7 @@ const VendorList = lazy(() => import('../components/vendors/VendorList'));
 const VendorPortal = lazy(() => import('../components/vendors/VendorPortal'));
 const VendorUsedConsoleAds = lazy(() => import('../components/vendors/VendorUsedConsoleAds'));
 const LandingPageSettings = lazy(() => import('../components/settings/LandingPageSettings'));
+const NavigationSettings = lazy(() => import('../components/settings/NavigationSettings'));
 const AnnouncementBarSettings = lazy(() => import('../components/settings/AnnouncementBarSettings'));
 const TermsSettings = lazy(() => import('../components/settings/TermsSettings'));
 const PopupSettings = lazy(() => import('../components/settings/PopupSettings'));
@@ -74,6 +75,7 @@ export default function AdminRoutes() {
         <Route path="discounts" element={<ProtectedRoute roles={staffRoles}><LazyPage><DiscountList /></LazyPage></ProtectedRoute>} />
         <Route path="vendors" element={<ProtectedRoute roles={staffRoles}><LazyPage><VendorList /></LazyPage></ProtectedRoute>} />
         <Route path="services" element={<ProtectedRoute roles={staffRoles}><LazyPage><ServiceTickets /></LazyPage></ProtectedRoute>} />
+        <Route path="store-navigation" element={<ProtectedRoute roles={staffRoles}><LazyPage><NavigationSettings /></LazyPage></ProtectedRoute>} />
         <Route path="landing-page" element={<ProtectedRoute roles={staffRoles}><LazyPage><LandingPageSettings /></LazyPage></ProtectedRoute>} />
         <Route path="announcement-bar" element={<ProtectedRoute roles={staffRoles}><LazyPage><AnnouncementBarSettings /></LazyPage></ProtectedRoute>} />
         <Route path="website-popup" element={<ProtectedRoute roles={staffRoles}><LazyPage><PopupSettings /></LazyPage></ProtectedRoute>} />

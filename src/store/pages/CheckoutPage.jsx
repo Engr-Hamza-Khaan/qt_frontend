@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { storeApi } from '../api';
 import { formatCurrency } from '../../utils/formatters';
 import { openTermsModal } from '../components/TermsModal';
+import { BANK_DETAILS } from '../config/contact';
 
 // ─── Delivery charge table ────────────────────────────────────────────────────
 // Category slug that identifies consoles (adjust if your slug differs)
@@ -161,7 +162,7 @@ function CheckoutPage() {
               <input required className="store-input sm:col-span-2" placeholder="Street Address" value={address.street} onChange={(e) => setAddress({ ...address, street: e.target.value })} />
               <input required className="store-input" placeholder="City" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
               <input required className="store-input" placeholder="State" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
-              <input required className="store-input" placeholder="Country" value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
+              <input readOnly className="store-input" value="Pakistan" aria-label="Country" />
             </div>
 
             {/* ── Delivery Zone ─────────────────────────────── */}
@@ -196,11 +197,31 @@ function CheckoutPage() {
           <section className="p-4 sm:p-6 store-glass-panel">
             <h2 className="font-bold text-white mb-4 font-display">Payment & Notes</h2>
             <select className="store-input mb-4" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-              {/* <option>Credit Card</option>
-              <option>PayPal</option>
-              <option>Bank Transfer</option> */}
               <option>Cash on Delivery</option>
+              <option>Bank Transfer</option>
             </select>
+            {paymentMethod === 'Bank Transfer' && (
+              <div className="mb-4 p-4 rounded-xl border border-neon-purple/30 bg-white/5 space-y-3">
+                {BANK_DETAILS.qrImage && (
+                  <img src={BANK_DETAILS.qrImage} alt="Bank transfer QR" className="w-full max-w-xs mx-auto rounded-lg" />
+                )}
+                <p className="text-xs font-bold text-white uppercase tracking-wider">Account Details</p>
+                <dl className="text-xs space-y-1.5">
+                  {[
+                    ['Account Title', BANK_DETAILS.accountTitle],
+                    ['IBAN Number', BANK_DETAILS.iban],
+                    ['Account Number', BANK_DETAILS.accountNumber],
+                    ['Bank', BANK_DETAILS.bank],
+                    ['Branch', BANK_DETAILS.branch],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex flex-wrap gap-x-2">
+                      <dt className="text-gray-400">{k}:</dt>
+                      <dd className="text-white font-medium break-all">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
             <textarea className="store-input" rows={3} placeholder="Order notes (optional)" value={customerNotes} onChange={(e) => setCustomerNotes(e.target.value)} />
           </section>
         </div>

@@ -27,6 +27,9 @@ const REGION_OPTIONS = [
   'Region 04 (Australia)'
 ];
 
+const GIFT_CARD_REGIONS = ['USA', 'UK', 'UAE'];
+const GIFT_CARD_PLATFORMS = ['Playstation', 'Xbox', 'Nintendo', 'Roblox'];
+
 const GAME_PLATFORMS = ['PS5', 'PS4', 'XBOX', 'NINTENDO SWITCH'];
 
 function ProductList() {
@@ -270,6 +273,17 @@ function ProductList() {
     return name.includes('game') || slug.includes('game') || plat === 'software';
   }, [selectedCatObj, categoryId]);
 
+  const isGiftCardCategory = useMemo(() => {
+    if (!selectedCatObj) return false;
+    return `${selectedCatObj.name || ''} ${selectedCatObj.slug || ''}`.toLowerCase().includes('gift');
+  }, [selectedCatObj]);
+
+  useEffect(() => {
+    if (!isGiftCardCategory) return;
+    if (!GIFT_CARD_REGIONS.includes(region)) setRegion(GIFT_CARD_REGIONS[0]);
+    if (!GIFT_CARD_PLATFORMS.includes(platform)) setPlatform(GIFT_CARD_PLATFORMS[0]);
+  }, [isGiftCardCategory, region, platform]);
+
   const handleToggleGenre = (g) => {
     setSelectedGenres((prev) => {
       if (prev.includes(g)) {
@@ -466,7 +480,8 @@ function ProductList() {
           variant: variant || undefined,
           brand: brand || undefined,
           placement: placement || undefined,
-          categoryType: 'Console',
+          ...(isGiftCardCategory ? { region: region || null } : {}),
+          categoryType: isGiftCardCategory ? 'Gift Card' : 'Console',
         })
       },
       specifications: {
@@ -546,6 +561,7 @@ function ProductList() {
     try {
       const res = await api.products.delete(id);
       if (res.success) {
+        if (res.archived && res.message) alert(res.message);
         fetchData();
       }
     } catch (err) {
@@ -777,6 +793,7 @@ function ProductList() {
     if (!window.confirm('Delete this variation SKU?')) return;
     try {
       const res = await api.products.deleteVariation(varId);
+      if (res.success && res.archived && res.message) alert(res.message);
       if (res.success) {
         const updatedProdRes = await api.products.getById(selectedProductForVariations.id);
         if (updatedProdRes.success) {
@@ -1672,6 +1689,24 @@ function ProductList() {
                         />
                       </div>
 
+{isGiftCardCategory ? (
+<>
+                      <div className="sm:col-span-3 space-y-1">
+                        <label className="text-xs font-semibold text-slate-500 uppercase">REGION</label>
+                        <select
+                          value={region}
+                          onChange={(e) => setRegion(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
+                        >
+                          {GIFT_CARD_REGIONS.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      </div>
+
+</>
+) : (
+<>
                       <div className="sm:col-span-3 space-y-1">
                         <label className="text-xs font-semibold text-slate-500 uppercase">VARIANT</label>
                         <select
@@ -1690,6 +1725,8 @@ function ProductList() {
                         </select>
                       </div>
 
+</>
+)}
                       <div className="sm:col-span-3 space-y-1">
                         <label className="text-xs font-semibold text-slate-500 uppercase">MODEL NUMBER</label>
                         <input
@@ -1735,17 +1772,10 @@ function ProductList() {
                           onChange={(e) => setPlatform(e.target.value)}
                           className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:text-white"
                         >
-                          <option value="PS5">PS5</option>
-                          <option value="PS4">PS4</option>
-                          <option value="PS3">PS3</option>
-                          <option value="PS2">PS2</option>
-                          <option value="Xbox Series X/S">Xbox Series X/S</option>
-                          <option value="Xbox One">Xbox One</option>
-                          <option value="Nintendo Switch">Nintendo Switch</option>
-                          <option value="PC">PC</option>
-                          <option value="Retro">Retro</option>
-                          <option value="Accessories">Accessories</option>
-                          {platform && !['PS5', 'PS4', 'PS3', 'PS2', 'Xbox Series X/S', 'Xbox One', 'Nintendo Switch', 'PC', 'Retro', 'Accessories'].includes(platform) && (
+                          {(isGiftCardCategory ? GIFT_CARD_PLATFORMS : ['PS5', 'PS4', 'PS3', 'PS2', 'Xbox Series X/S', 'Xbox One', 'Nintendo Switch', 'PC', 'Retro', 'Accessories']).map((p) => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                          {platform && !(isGiftCardCategory ? GIFT_CARD_PLATFORMS : ['PS5', 'PS4', 'PS3', 'PS2', 'Xbox Series X/S', 'Xbox One', 'Nintendo Switch', 'PC', 'Retro', 'Accessories']).includes(platform) && (
                             <option value={platform}>{platform}</option>
                           )}
                         </select>

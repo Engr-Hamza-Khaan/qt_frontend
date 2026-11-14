@@ -1,5 +1,6 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
 import { storeApi } from '../api';
 import ProductCard from '../components/ProductCard';
@@ -9,7 +10,13 @@ import TrustBar from '../components/TrustBar';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 function ProductSection({ title, subtitle, products, viewAllLink, viewAllText = 'View All', alt = false }) {
+  const scrollerRef = useRef(null);
   if (!products?.length) return null;
+
+  const scrollByPage = (dir) => {
+    const el = scrollerRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.9, behavior: 'smooth' });
+  };
 
   return (
     <section className={`max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-12 ${alt ? 'store-section-alt' : ''}`}>
@@ -24,10 +31,34 @@ function ProductSection({ title, subtitle, products, viewAllLink, viewAllText = 
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3 md:gap-4">
-        {products.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
+      {/* Single-row scroller: arrows on desktop, swipe on touch */}
+      <div className="relative group/scroller">
+        <div
+          ref={scrollerRef}
+          className="flex gap-2.5 sm:gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {products.map((p) => (
+            <div key={p.id} className="snap-start shrink-0 w-[47%] sm:w-[48%] md:w-[31.5%] lg:w-[23.5%] xl:w-[19%]">
+              <ProductCard product={p} />
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => scrollByPage(-1)}
+          aria-label="Scroll left"
+          className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white text-gray-900 shadow-lg items-center justify-center hover:scale-110 transition"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollByPage(1)}
+          aria-label="Scroll right"
+          className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white text-gray-900 shadow-lg items-center justify-center hover:scale-110 transition"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
     </section>
   );

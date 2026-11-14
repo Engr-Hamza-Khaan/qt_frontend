@@ -267,6 +267,9 @@ export const api = {
     getLandingPage: async () => request('/settings/landing-page'),
     updateLandingPage: async (data) =>
       request('/settings/landing-page', { method: 'PUT', body: data }),
+    getNavigation: async () => request('/settings/navigation'),
+    updateNavigation: async (data) =>
+      request('/settings/navigation', { method: 'PUT', body: data }),
     getNotificationBar: async () => request('/settings/notification-bar'),
     updateNotificationBar: async (data) =>
       request('/settings/notification-bar', { method: 'PUT', body: data }),

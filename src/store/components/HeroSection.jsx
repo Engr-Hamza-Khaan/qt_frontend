@@ -108,10 +108,10 @@ function HeroSection({ heroConfig = {} }) {
       ? sliderConfig.slides
       : DEFAULT_SLIDES;
 
-    const autoplay = sliderConfig?.autoplay !== false;
+    const autoplay = true;
     const autoplayInterval = Math.max(2000, Number(sliderConfig?.autoplayInterval) || 5000);
-    const showArrows = sliderConfig?.showArrows !== false;
-    const showDots = sliderConfig?.showDots !== false;
+    const showArrows = true;
+    const showDots = true;
 
     const [currentSlide, setCurrentSlide] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
