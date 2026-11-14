@@ -493,7 +493,7 @@
   }
 
   .store-nav-items {
-    @apply flex items-center justify-between gap-0.5 sm:gap-1 md:gap-2 lg:gap-2.5 px-2 sm:px-3.5 py-1 sm:py-1.5 overflow-visible;
+    @apply flex items-center justify-between gap-2.5 px-3.5 py-1.5 overflow-visible;
   }
 
   .store-nav-label {
@@ -501,15 +501,33 @@
   }
 
   .store-nav-item-inner {
-    @apply flex flex-col items-center justify-center rounded-2xl transition-all duration-200 cursor-pointer;
+    @apply relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 cursor-pointer;
+    /* same width for every item = width of the widest ("Controller Tester") */
+    width: 7.5rem;
+    isolation: isolate;
   }
 
-  .store-nav-item-inner--default:hover {
-    background: radial-gradient(circle at center, rgba(65, 120, 255, 0.22) 0%, transparent 75%);
+  /* Glow extends well beyond the item box */
+  .store-nav-item-inner::before {
+    content: '';
+    position: absolute;
+    inset: -24px -30px;
+    border-radius: 9999px;
+    background: radial-gradient(ellipse at center, rgba(65, 120, 255, 0.55) 0%, rgba(65, 120, 255, 0.2) 45%, transparent 75%);
+    filter: blur(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: -1;
   }
 
-  .store-nav-item-inner--active {
-    background: radial-gradient(circle at center, rgba(90, 150, 255, 0.32) 0%, transparent 80%);
+  .store-nav-item-inner--default:hover::before {
+    opacity: 1;
+  }
+
+  .store-nav-item-inner--active::before {
+    opacity: 1;
+    background: radial-gradient(ellipse at center, rgba(90, 150, 255, 0.7) 0%, rgba(90, 150, 255, 0.28) 45%, transparent 78%);
   }
 
   .store-nav-item-inner--active .store-nav-label {

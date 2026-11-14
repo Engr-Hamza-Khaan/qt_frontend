@@ -78,7 +78,7 @@ function DesktopNavItem({ item, active, onNavigate }) {
 
   const iconElement = (
     <div
-      className={`store-nav-item-inner group flex flex-col items-center justify-center gap-0.5 px-2.5 sm:px-3 py-1 rounded-2xl transition-all duration-200 ${
+      className={`store-nav-item-inner group flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-2xl transition-all duration-200 ${
         active ? 'store-nav-item-inner--active' : 'store-nav-item-inner--default'
       }`}
     >
@@ -396,8 +396,41 @@ function StoreHeader({ embedded = false }) {
     setSearchOpen(false);
   };
 
+  // Embedded (home hero) header lives inside an overflow-hidden section, so CSS sticky
+  // can't work there. Emulate sticky: once its slot scrolls past the top, pin it with fixed.
+  const slotRef = useRef(null);
+  const headerRef = useRef(null);
+  const [pinned, setPinned] = useState(false);
+  const [slotHeight, setSlotHeight] = useState(0);
+
+  useEffect(() => {
+    if (!embedded) return undefined;
+    const update = () => {
+      const slot = slotRef.current;
+      if (!slot) return;
+      setPinned(slot.getBoundingClientRect().top <= 0);
+      if (headerRef.current && !slot.dataset.locked) {
+        setSlotHeight(headerRef.current.offsetHeight);
+      }
+    };
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [embedded, mobileOpen, searchOpen]);
+
+  const headerClass = embedded
+    ? pinned
+      ? 'fixed top-0 inset-x-0 z-[100] overflow-visible bg-[#050c38]/95 backdrop-blur-xl shadow-[0_6px_24px_rgba(0,0,0,0.5)]'
+      : 'relative z-[100] overflow-visible'
+    : 'sticky top-0 z-[100] overflow-visible bg-[#050c38]';
+
   return (
-    <header className={`sticky top-0 z-[100] overflow-visible ${embedded ? '' : 'bg-[#050c38]'}`}>
+    <div ref={slotRef} style={embedded && pinned ? { height: slotHeight } : undefined}>
+    <header ref={headerRef} className={headerClass}>
       <div className={`px-4 sm:px-6 lg:px-8 pt-4 overflow-visible ${embedded ? 'pb-2' : 'pb-4 lg:pb-6'}`}>
         <div className="max-w-7xl mx-auto overflow-visible store-header-shell">
           <div className="flex items-center justify-between gap-2 sm:gap-4 overflow-visible">
@@ -405,7 +438,7 @@ function StoreHeader({ embedded = false }) {
               <img
                 src={qtLogo}
                 alt="Quick Turn Logo"
-                className="h-8 sm:h-9 md:h-10 w-auto object-contain drop-shadow-[0_0_12px_rgba(75,125,255,0.4)] group-hover:scale-105 transition-transform"
+                className="h-7 sm:h-8 md:h-9 w-auto object-contain drop-shadow-[0_0_12px_rgba(75,125,255,0.4)] group-hover:scale-105 transition-transform"
               />
               {/* <div className="flex flex-col justify-center">
                 <span className="font-outfit font-black text-sm sm:text-base md:text-lg text-white tracking-wider uppercase leading-none group-hover:text-blue-200 transition-colors">
@@ -417,7 +450,7 @@ function StoreHeader({ embedded = false }) {
               </div> */}
             </Link>
 
-            <div className="hidden lg:flex flex-1 justify-center min-w-0 px-2">
+            <div className="hidden xl:flex flex-1 justify-center min-w-0 pl-6 pr-2">
               <nav className="store-navbar w-fit px-3 py-1.5">
                 <div className="store-nav-items">
                   {storeNav.map((item) => (
@@ -485,7 +518,7 @@ function StoreHeader({ embedded = false }) {
 
               <button
                 type="button"
-                className="lg:hidden p-2 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition"
+                className="xl:hidden p-2 rounded-full text-gray-200 hover:text-white hover:bg-white/10 transition"
                 onClick={() => setMobileOpen(!mobileOpen)}
                 aria-label="Menu"
               >
@@ -504,7 +537,7 @@ function StoreHeader({ embedded = false }) {
       </div>
 
       {mobileOpen && (
-        <div className="lg:hidden px-4 sm:px-6 lg:px-8 pb-4 animate-fade-in">
+        <div className="xl:hidden px-4 sm:px-6 lg:px-8 pb-4 animate-fade-in">
           <div className="max-w-7xl mx-auto p-4 store-glass-panel space-y-3 max-h-[80vh] overflow-y-auto">
             {/* Prominent Search on Mobile Menu */}
             <div className="pb-2">
@@ -550,6 +583,7 @@ function StoreHeader({ embedded = false }) {
         </div>
       )}
     </header>
+    </div>
   );
 }
 
