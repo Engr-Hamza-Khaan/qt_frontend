@@ -40,16 +40,14 @@ export default function XboxLayout({
 
   return (
     <div className="w-full">
-      {/* Top Header Row with LIVE INPUT and Triggers */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10 mb-8">
-        <div className="flex items-center gap-2">
-          <span className="text-sm sm:text-base font-bold text-gray-200 tracking-wide">
-            {liveInputLabel}
-          </span>
-        </div>
+      {/* Top Header: LIVE INPUT title with full-width trigger bars below */}
+      <div className="pb-5 border-b border-white/10 mb-8">
+        <span className="block text-xs sm:text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">
+          {liveInputLabel}
+        </span>
 
         {/* Triggers Readout */}
-        <div className="flex items-center gap-6 sm:gap-12 justify-between sm:justify-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           <TriggerMeter label="LT" value={lt.value} variant="xbox" />
           <TriggerMeter label="RT" value={rt.value} variant="xbox" />
         </div>
